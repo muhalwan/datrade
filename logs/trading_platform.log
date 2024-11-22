@@ -1194,3 +1194,16 @@
 2024-11-22 10:06:44,337 - src.data.collector - INFO - Stats after 1700s - Klines: 1165, Trades: 4185, OrderBook: 17918
 2024-11-22 10:06:44,466 - src.data.collector - INFO - Stats after 1700s - Klines: 1165, Trades: 4186, OrderBook: 17918
 2024-11-22 10:06:44,506 - src.data.collector - INFO - Stats after 1700s - Klines: 1165, Trades: 4187, OrderBook: 17918
+2024-11-22 10:06:53,627 - src.data.collector - INFO - Stats after 1710s - Klines: 1169, Trades: 4195, OrderBook: 18037
+2024-11-22 10:06:54,372 - src.data.collector - INFO - Stats after 1710s - Klines: 1169, Trades: 4195, OrderBook: 18062
+2024-11-22 10:06:54,475 - src.data.collector - INFO - Stats after 1710s - Klines: 1170, Trades: 4195, OrderBook: 18062
+2024-11-22 10:06:54,515 - src.data.collector - INFO - Stats after 1710s - Klines: 1170, Trades: 4196, OrderBook: 18062
+2024-11-22 10:07:03,890 - src.data.collector - INFO - Stats after 1720s - Klines: 1175, Trades: 4208, OrderBook: 18111
+2024-11-22 10:07:03,936 - src.data.collector - INFO - Stats after 1720s - Klines: 1176, Trades: 4208, OrderBook: 18111
+2024-11-22 10:07:04,013 - src.data.collector - INFO - Stats after 1720s - Klines: 1177, Trades: 4208, OrderBook: 18111
+2024-11-22 10:07:04,217 - src.data.collector - INFO - Stats after 1720s - Klines: 1177, Trades: 4209, OrderBook: 18111
+2024-11-22 10:07:04,320 - src.data.collector - INFO - Stats after 1720s - Klines: 1177, Trades: 4210, OrderBook: 18111
+2024-11-22 10:07:04,360 - src.data.collector - INFO - Stats after 1720s - Klines: 1177, Trades: 4211, OrderBook: 18111
+2024-11-22 10:07:04,422 - src.data.collector - INFO - Stats after 1720s - Klines: 1177, Trades: 4212, OrderBook: 18111
+2024-11-22 10:07:14,166 - src.data.collector - INFO - Stats after 1730s - Klines: 1186, Trades: 4252, OrderBook: 18259
+2024-11-22 10:07:14,215 - src.data.collector - INFO - Stats after 1730s - Klines: 1186, Trades: 4253, OrderBook: 18259
