@@ -12,3 +12,4 @@ requests>=2.31.0
 fake-useragent==1.4.0
 pyOpenSSL>=24.0.0
 plotly>=5.18.0
+pydantic==2.5.1
