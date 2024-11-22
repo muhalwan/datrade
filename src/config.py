@@ -1,4 +1,5 @@
-from pydantic import BaseSettings, Field
+from pydantic_settings import BaseSettings
+from pydantic import Field
 from typing import List
 import json
 
@@ -17,8 +18,8 @@ class Settings(BaseSettings):
 
     @classmethod
     def get_symbols(cls) -> List[str]:
-        env_symbols = json.loads(Field(..., env='TRADING_SYMBOLS'))
-        return env_symbols if env_symbols else ["BTCUSDT"]
+        symbols = json.loads(Field(..., env='TRADING_SYMBOLS'))
+        return symbols if symbols else ["BTCUSDT"]
 
     class Config:
         env_file = '.env'
