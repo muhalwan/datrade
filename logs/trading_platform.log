@@ -1,0 +1,1196 @@
+2024-11-22 09:09:22,371 - src.data.database.connection - INFO - MongoDB indexes created successfully
+2024-11-22 09:09:22,371 - src.data.database.connection - INFO - MongoDB connection established successfully to database: crypto_trading
+2024-11-22 09:09:22,439 - __main__ - ERROR - Error in main: HTTPSConnectionPool(host='api.binance.com', port=443): Max retries exceeded with url: /api/v3/ping (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1000)')))
+2024-11-22 09:11:31,693 - src.data.database.connection - INFO - MongoDB indexes created successfully
+2024-11-22 09:11:31,693 - src.data.database.connection - INFO - MongoDB connection established successfully to database: crypto_trading
+2024-11-22 09:11:32,357 - __main__ - ERROR - Error in main: BinanceRequestException: Invalid Response: <!DOCTYPE html><html itemscope="itemscope" itemtype="http://schema.org/WebPage" lang="id-ID"><head><title>(120) Internet Positif - Positifkan diri kamu</title><meta property="og:url" content="https://internetpositif.id"><meta property="og:title" content="Internet Positif - Positifkan diri kamu"><meta property="og:description" content="Halaman yang kamu tuju tidak dapat diakses"><meta property="og:site_name" content="uzone.id"><meta itemprop="name" content="Internet Positif - Positifkan diri kamu"><meta itemprop="description" content="Halaman yang kamu tuju tidak dapat diakses"><meta itemprop="image" content="https://cdn4.uzone.id/assets/uploads/wp/header.gif"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" type="image/x-icon" href="https://cdn4.uzone.id/assets/uploads/uzone_prime/favicon.gif"><style>body{margin:0;padding:0}.top-banner-section{background-color:#d00;margin:auto;text-align:center}.text-floating{background-color:#d00;padding:15px 0 0 0;position:fixed;bottom:0;left:0;right:0;text-align:center}.text-floating p{color:#fff}.top-banner-section img{width:100%}.item-list{margin:20px auto 40px auto}.item-list img{width:100%;margin-bottom:20px;border-radius:10px;height:150px;object-fit:cover}.item-list h4{font-size:16px;font-weight:700}.item-list a,.item-list a:hover{color:#333;text-decoration:none}.box-ads{text-align:center;margin:20px auto}.box-ads-mr{text-align:center;margin:20px auto}@media (min-width:320px) AND (max-width:768px){.top-banner-section{padding:40px 0}.item-list h4{font-size:11px;font-weight:700}.item-list img{margin-bottom:10px;border-radius:10px;height:100px}.item-list{margin:20px auto 0 auto}}</style><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"><script async src="https://www.googletagmanager.com/gtag/js?id=G-BPWBTPEH1Q"></script><script>function gtag(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],gtag("js",new Date),gtag("config","G-BPWBTPEH1Q")</script></head><body><main><section class="top-banner-section"><div class="container"><div class="row"><img src="https://cdn4.uzone.id/assets/uploads/wp/header.gif"></div></div></section><section class="main-body"><div class="container"><div class="row top-content"></div><div class="row" style="margin-bottom:30px"><div class="col-md-3 col-lg-3 col-xs-6 col-sm-6 col-6"><div class="item-list"><a href="https://uzone.id/warga-jakarta-perlu-tahu-begini-cara-cek-nik-aktif-secara-online"><div class="item-list-images"><img src="https://cdn4.uzone.id/assets/uploads/UZONEINC/digilife/KTP_Digital/ktp-digital-uzone.id.jpg/800"></div><div class="item-list-description"><h4>Warga Jakarta Perlu Tahu, Begini Cara Cek NIK Aktif Secara Online</h4></div></a></div></div><div class="col-md-3 col-lg-3 col-xs-6 col-sm-6 col-6"><div class="item-list"><a href="https://uzone.id/10-hp-android-paling-kencang-sedunia-banyak-dijual-di-indonesia"><div class="item-list-images"><img src="https://cdn4.uzone.id/assets/uploads/UZONEINC/gadget/Samsung/Galaxy_S24_Series/S24Uzone/galaxy-s24-series-online-exclusive2.jpg/800"></div><div class="item-list-description"><h4>10 HP Android Paling Kencang Sedunia, Banyak Dijual di Indonesia</h4></div></a></div></div><div class="col-md-3 col-lg-3 col-xs-6 col-sm-6 col-6"><div class="item-list"><a href="https://uzone.id/laku-1-200-unit-apa-sih-daya-tarik-suzuki-jimny-5-pintu-"><div class="item-list-images"><img src="https://cdn4.uzone.id/assets/uploads/UZONEINC/auto/Suzuki/Jimny/20240201_113311_copy_1600x900.jpg/800"></div><div class="item-list-description"><h4>Laku 1.200 Unit, Apa Sih Daya Tarik Suzuki Jimny 5 Pintu?</h4></div></a></div></div><div class="col-md-3 col-lg-3 col-xs-6 col-sm-6 col-6"><div class="item-list"><a href="https://uzone.id/mengenal-satelit-merah-putih-2-telkom-meluncur-pakai-roket-spacex"><div class="item-list-images"><img src="https://cdn4.uzone.id/assets/uploads/UZONEINC/telco/satelit/TELKOMSAT/telkom-telkomsat-satelit-merah-putih-2.jpg/800"></div><div class="item-list-description"><h4>Mengenal Satelit Merah Putih 2 Telkom, Meluncur Pakai Roket SpaceX</h4></div></a></div></div></div></div></section><section class="text-floating"><div class="container"><div class="row"><footer><p>Halaman ini akan tertutup secara otomatis pada detik ke<span class="counter"></span></p></footer></div></div></section></main></body><script src="https://code.jquery.com/jquery-3.6.0.min.js"></script><script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script><script>template = (e, i, t, a) => {
+            $("." + e).append(
+                '<div class="col-md-3 col-lg-3 col-xs-6 col-sm-6 col-6 ' +
+                    a +
+                    '"><div class="item-list"><a href="' +
+                    i.slug +
+                    '"><div class="item-list-images"><img src="' +
+                    i.feature_img +
+                    '"></div><div class="item-list-description"><h4>' +
+                    i.post_title +
+                    "</h4></div></a></div></div>"
+            );
+        };
+        var device = "";
+        (detectDevice = () =>
+            /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|ipad|iris|kindle|Android|Silk|lge |maemo|midp|mmp|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows (ce|phone)|xda|xiino/i.test(
+                navigator.userAgent
+            ) ||
+            /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(
+                navigator.userAgent.substr(0, 4)
+            )
+                ? ($(".slotAdsHeaderDesktop").html(""), (device = "mobile"))
+                : ($(".slotAdsHeaderMobile").html(""), (device = "desktop"))),
+            detectDevice();
+        const url = "https://apis1.uzone.id/uzone/getDataInpos";
+        axios.get(url).then((e) => {
+            var i = 0;
+            for (const t of e.data)
+                (i += 1) <= 14 && (1 === i || (5 === i ? "mobile" === device && template("top-content", t, "top", i) : 6 === i ? (template("top-content", t, "top", i), templateMgid()) : template("top-content", t, "top", i)));
+        }),
+            "mobile" === device
+                ? ((templateMgid = () => {
+                      $(".mgid").append('<div id="M709336ScriptRootC1224345"></div>');
+                      var e = document.createElement("script");
+                      (e.src = "https://jsc.mgid.com/i/n/internetpositif.id.1224345.js"), (e.async = !0), $(".mgid").append(e);
+                  }),
+                  (templateAdsMR = () => {
+                      $(".top-content").append(
+                          '<div class="col-md-12 col-lg-12 col-xs-12 col-12"><div class="box-ads-mr"><iframe id="a9b3bef7? name="a9b3bef7" src="https://a03.uadexchange.com/delivery/afr.php?zoneid=7" frameborder="0" scrolling="no" width="300" height="250" allow="autoplay"></iframe></div></div>'
+                      );
+                  }),
+                  (templateMgid = () => {
+                      $(".top-content").append('<div style="clear:both;"></div><div class="col-md-12 col-12"><div class="mgid"></div></div>'), $(".mgid").append('<div id="M709336ScriptRootC1410228"></div>');
+                      var e = document.createElement("script");
+                      (e.src = "https://jsc.mgid.com/i/n/internetpositif.id.1410228.js"), (e.async = !0), $(".mgid").append(e);
+                  }))
+                : ((templateAds = () => {
+                      $(".top-content").append(
+                          '<div style="clear:both;"></div><div class="col-md-12 col-12"><div class="box-ads"><iframe id="a9efa36d" name="a9efa36d" src="https://a03.uadexchange.com/delivery/afr.php?zoneid=6" frameborder="0" scrolling="no" width="728" height="90" allow="autoplay"></iframe></div></div>'
+                      );
+                  }),
+                  (templateAdsMR = () => {
+                      $(".top-content").append(
+                          '<div class="col-md-3 col-lg-3 col-xs-6 col-6"><div class="box-ads-mr"><iframe id="a9b3bef7? name="a9b3bef7" src="https://a03.uadexchange.com/delivery/afr.php?zoneid=7" frameborder="0" scrolling="no" width="300" height="250" allow="autoplay"></iframe></div></div>'
+                      );
+                  }),
+                  (templateMgid = () => {
+                      $(".top-content").append('<div style="clear:both;"></div><div class="col-md-12 col-12"><div class="mgid"></div></div>'), $(".mgid").append('<div id="M709336ScriptRootC1410228"></div>');
+                      var e = document.createElement("script");
+                      (e.src = "https://jsc.mgid.com/i/n/internetpositif.id.1410228.js"), (e.async = !0), $(".mgid").append(e);
+                  }));
+        var timeleft = 5,
+            downloadTimer = setInterval(function () {
+                timeleft < 0 ? (window.location.href = "https://redirect.uzone.co.id/api/list_push") : ($(".counter").html(timeleft), (timeleft -= 1));
+            }, 1e3);</script></html>
+
+2024-11-22 09:13:10,393 - src.data.database.connection - INFO - MongoDB indexes created successfully
+2024-11-22 09:13:10,393 - src.data.database.connection - INFO - MongoDB connection established successfully to database: crypto_trading
+2024-11-22 09:13:10,401 - __main__ - ERROR - Error in main: Client.__init__() got an unexpected keyword argument 'base_url'
+2024-11-22 09:14:38,362 - src.data.database.connection - INFO - MongoDB indexes created successfully
+2024-11-22 09:14:38,362 - src.data.database.connection - INFO - MongoDB connection established successfully to database: crypto_trading
+2024-11-22 09:14:38,478 - __main__ - ERROR - Error in main: BinanceRequestException: Invalid Response: <!DOCTYPE html><html itemscope="itemscope" itemtype="http://schema.org/WebPage" lang="id-ID"><head><title>(116) Internet Positif - Positifkan diri kamu</title><meta property="og:url" content="https://internetpositif.id"><meta property="og:title" content="Internet Positif - Positifkan diri kamu"><meta property="og:description" content="Halaman yang kamu tuju tidak dapat diakses"><meta property="og:site_name" content="uzone.id"><meta itemprop="name" content="Internet Positif - Positifkan diri kamu"><meta itemprop="description" content="Halaman yang kamu tuju tidak dapat diakses"><meta itemprop="image" content="https://cdn4.uzone.id/assets/uploads/wp/header.gif"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" type="image/x-icon" href="https://cdn4.uzone.id/assets/uploads/uzone_prime/favicon.gif"><style>body{margin:0;padding:0}.top-banner-section{background-color:#d00;margin:auto;text-align:center}.text-floating{background-color:#d00;padding:15px 0 0 0;position:fixed;bottom:0;left:0;right:0;text-align:center}.text-floating p{color:#fff}.top-banner-section img{width:100%}.item-list{margin:20px auto 40px auto}.item-list img{width:100%;margin-bottom:20px;border-radius:10px;height:150px;object-fit:cover}.item-list h4{font-size:16px;font-weight:700}.item-list a,.item-list a:hover{color:#333;text-decoration:none}.box-ads{text-align:center;margin:20px auto}.box-ads-mr{text-align:center;margin:20px auto}@media (min-width:320px) AND (max-width:768px){.top-banner-section{padding:40px 0}.item-list h4{font-size:11px;font-weight:700}.item-list img{margin-bottom:10px;border-radius:10px;height:100px}.item-list{margin:20px auto 0 auto}}</style><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"><script async src="https://www.googletagmanager.com/gtag/js?id=G-BPWBTPEH1Q"></script><script>function gtag(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],gtag("js",new Date),gtag("config","G-BPWBTPEH1Q")</script></head><body><main><section class="top-banner-section"><div class="container"><div class="row"><img src="https://cdn4.uzone.id/assets/uploads/wp/header.gif"></div></div></section><section class="main-body"><div class="container"><div class="row top-content"></div><div class="row" style="margin-bottom:30px"><div class="col-md-3 col-lg-3 col-xs-6 col-sm-6 col-6"><div class="item-list"><a href="https://uzone.id/warga-jakarta-perlu-tahu-begini-cara-cek-nik-aktif-secara-online"><div class="item-list-images"><img src="https://cdn4.uzone.id/assets/uploads/UZONEINC/digilife/KTP_Digital/ktp-digital-uzone.id.jpg/800"></div><div class="item-list-description"><h4>Warga Jakarta Perlu Tahu, Begini Cara Cek NIK Aktif Secara Online</h4></div></a></div></div><div class="col-md-3 col-lg-3 col-xs-6 col-sm-6 col-6"><div class="item-list"><a href="https://uzone.id/10-hp-android-paling-kencang-sedunia-banyak-dijual-di-indonesia"><div class="item-list-images"><img src="https://cdn4.uzone.id/assets/uploads/UZONEINC/gadget/Samsung/Galaxy_S24_Series/S24Uzone/galaxy-s24-series-online-exclusive2.jpg/800"></div><div class="item-list-description"><h4>10 HP Android Paling Kencang Sedunia, Banyak Dijual di Indonesia</h4></div></a></div></div><div class="col-md-3 col-lg-3 col-xs-6 col-sm-6 col-6"><div class="item-list"><a href="https://uzone.id/laku-1-200-unit-apa-sih-daya-tarik-suzuki-jimny-5-pintu-"><div class="item-list-images"><img src="https://cdn4.uzone.id/assets/uploads/UZONEINC/auto/Suzuki/Jimny/20240201_113311_copy_1600x900.jpg/800"></div><div class="item-list-description"><h4>Laku 1.200 Unit, Apa Sih Daya Tarik Suzuki Jimny 5 Pintu?</h4></div></a></div></div><div class="col-md-3 col-lg-3 col-xs-6 col-sm-6 col-6"><div class="item-list"><a href="https://uzone.id/mengenal-satelit-merah-putih-2-telkom-meluncur-pakai-roket-spacex"><div class="item-list-images"><img src="https://cdn4.uzone.id/assets/uploads/UZONEINC/telco/satelit/TELKOMSAT/telkom-telkomsat-satelit-merah-putih-2.jpg/800"></div><div class="item-list-description"><h4>Mengenal Satelit Merah Putih 2 Telkom, Meluncur Pakai Roket SpaceX</h4></div></a></div></div></div></div></section><section class="text-floating"><div class="container"><div class="row"><footer><p>Halaman ini akan tertutup secara otomatis pada detik ke<span class="counter"></span></p></footer></div></div></section></main></body><script src="https://code.jquery.com/jquery-3.6.0.min.js"></script><script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script><script>template = (e, i, t, a) => {
+            $("." + e).append(
+                '<div class="col-md-3 col-lg-3 col-xs-6 col-sm-6 col-6 ' +
+                    a +
+                    '"><div class="item-list"><a href="' +
+                    i.slug +
+                    '"><div class="item-list-images"><img src="' +
+                    i.feature_img +
+                    '"></div><div class="item-list-description"><h4>' +
+                    i.post_title +
+                    "</h4></div></a></div></div>"
+            );
+        };
+        var device = "";
+        (detectDevice = () =>
+            /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|ipad|iris|kindle|Android|Silk|lge |maemo|midp|mmp|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows (ce|phone)|xda|xiino/i.test(
+                navigator.userAgent
+            ) ||
+            /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(
+                navigator.userAgent.substr(0, 4)
+            )
+                ? ($(".slotAdsHeaderDesktop").html(""), (device = "mobile"))
+                : ($(".slotAdsHeaderMobile").html(""), (device = "desktop"))),
+            detectDevice();
+        const url = "https://apis1.uzone.id/uzone/getDataInpos";
+        axios.get(url).then((e) => {
+            var i = 0;
+            for (const t of e.data)
+                (i += 1) <= 14 && (1 === i || (5 === i ? "mobile" === device && template("top-content", t, "top", i) : 6 === i ? (template("top-content", t, "top", i), templateMgid()) : template("top-content", t, "top", i)));
+        }),
+            "mobile" === device
+                ? ((templateMgid = () => {
+                      $(".mgid").append('<div id="M709336ScriptRootC1224345"></div>');
+                      var e = document.createElement("script");
+                      (e.src = "https://jsc.mgid.com/i/n/internetpositif.id.1224345.js"), (e.async = !0), $(".mgid").append(e);
+                  }),
+                  (templateAdsMR = () => {
+                      $(".top-content").append(
+                          '<div class="col-md-12 col-lg-12 col-xs-12 col-12"><div class="box-ads-mr"><iframe id="a9b3bef7? name="a9b3bef7" src="https://a03.uadexchange.com/delivery/afr.php?zoneid=7" frameborder="0" scrolling="no" width="300" height="250" allow="autoplay"></iframe></div></div>'
+                      );
+                  }),
+                  (templateMgid = () => {
+                      $(".top-content").append('<div style="clear:both;"></div><div class="col-md-12 col-12"><div class="mgid"></div></div>'), $(".mgid").append('<div id="M709336ScriptRootC1410228"></div>');
+                      var e = document.createElement("script");
+                      (e.src = "https://jsc.mgid.com/i/n/internetpositif.id.1410228.js"), (e.async = !0), $(".mgid").append(e);
+                  }))
+                : ((templateAds = () => {
+                      $(".top-content").append(
+                          '<div style="clear:both;"></div><div class="col-md-12 col-12"><div class="box-ads"><iframe id="a9efa36d" name="a9efa36d" src="https://a03.uadexchange.com/delivery/afr.php?zoneid=6" frameborder="0" scrolling="no" width="728" height="90" allow="autoplay"></iframe></div></div>'
+                      );
+                  }),
+                  (templateAdsMR = () => {
+                      $(".top-content").append(
+                          '<div class="col-md-3 col-lg-3 col-xs-6 col-6"><div class="box-ads-mr"><iframe id="a9b3bef7? name="a9b3bef7" src="https://a03.uadexchange.com/delivery/afr.php?zoneid=7" frameborder="0" scrolling="no" width="300" height="250" allow="autoplay"></iframe></div></div>'
+                      );
+                  }),
+                  (templateMgid = () => {
+                      $(".top-content").append('<div style="clear:both;"></div><div class="col-md-12 col-12"><div class="mgid"></div></div>'), $(".mgid").append('<div id="M709336ScriptRootC1410228"></div>');
+                      var e = document.createElement("script");
+                      (e.src = "https://jsc.mgid.com/i/n/internetpositif.id.1410228.js"), (e.async = !0), $(".mgid").append(e);
+                  }));
+        var timeleft = 5,
+            downloadTimer = setInterval(function () {
+                timeleft < 0 ? (window.location.href = "https://redirect.uzone.co.id/api/list_push") : ($(".counter").html(timeleft), (timeleft -= 1));
+            }, 1e3);</script></html>
+
+2024-11-22 09:18:38,113 - src.data.database.connection - INFO - MongoDB indexes created successfully
+2024-11-22 09:18:38,114 - src.data.database.connection - INFO - MongoDB connection established successfully to database: crypto_trading
+2024-11-22 09:18:38,799 - __main__ - ERROR - Error in main: Database objects do not implement truth value testing or bool(). Please compare with None instead: database is not None
+2024-11-22 09:19:54,570 - src.data.database.connection - INFO - MongoDB indexes created successfully
+2024-11-22 09:19:54,570 - src.data.database.connection - INFO - MongoDB connection established successfully to database: crypto_trading
+2024-11-22 09:19:54,968 - __main__ - ERROR - Error in main: Database objects do not implement truth value testing or bool(). Please compare with None instead: database is not None
+2024-11-22 09:20:53,007 - src.data.database.connection - INFO - MongoDB indexes created successfully
+2024-11-22 09:20:53,007 - src.data.database.connection - INFO - MongoDB connection established successfully to database: crypto_trading
+2024-11-22 09:20:53,420 - __main__ - INFO - Starting data collection...
+2024-11-22 09:20:54,240 - src.data.collector - INFO - Connected to Binance testnet
+2024-11-22 09:20:54,240 - src.data.collector - INFO - Server time: 2024-11-22 09:20:54.047000
+2024-11-22 09:20:54,542 - src.data.collector - INFO - Started data collection for symbols: ['BTCUSDT', 'ETHUSDT']
+2024-11-22 09:20:58,225 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:20:58,236 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:20:58,242 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:20:58,252 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:20:58,376 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:20:58,386 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,252 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,263 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,273 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,284 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,294 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,300 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,300 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,300 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,300 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,300 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,300 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,300 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,300 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,300 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,300 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,301 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,301 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,301 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,301 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,301 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,301 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:03,301 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:11,121 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:11,132 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:11,142 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:11,153 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:11,163 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:11,174 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:11,194 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:11,215 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:11,231 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:11,241 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:11,252 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:11,262 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:11,273 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:11,278 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,043 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,054 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,065 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,075 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,085 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,096 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,101 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,106 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,111 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,117 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,127 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,138 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,148 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,159 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,169 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,180 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,190 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:22,211 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:24,208 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:24,218 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:24,224 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:24,229 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:24,240 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:24,245 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:24,255 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:24,266 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:24,276 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:24,287 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:24,297 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:24,308 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:24,319 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:24,324 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:24,335 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:24,346 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:25,929 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:25,984 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:26,699 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:26,710 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:28,318 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:28,329 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:29,650 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:29,707 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:30,611 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:31,354 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:31,365 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:31,406 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:31,417 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:31,469 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:31,506 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:31,516 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:31,527 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:33,141 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:33,384 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:34,793 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:34,803 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:35,329 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:35,340 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:35,377 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:35,382 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:35,393 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:35,414 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:35,425 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:35,435 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:35,461 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:35,472 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:35,483 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:35,613 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:37,475 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:37,485 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:37,496 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:38,794 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:38,815 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:39,907 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:39,917 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:41,313 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:42,995 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:43,139 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:43,144 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:43,159 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:43,180 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:43,533 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:43,543 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:45,106 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:45,201 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:45,222 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:45,232 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:45,267 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:46,958 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:46,969 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:47,629 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:48,768 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:48,779 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:50,058 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:50,100 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:50,110 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:51,314 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:52,996 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:53,007 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:53,017 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:53,028 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:53,038 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:54,468 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:54,474 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:54,509 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:54,514 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:55,828 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:55,854 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:55,880 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:55,890 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:55,901 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:56,767 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:57,555 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:57,610 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:59,790 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:59,800 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:59,842 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:21:59,853 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:00,431 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:00,442 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:00,452 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:00,462 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:00,473 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:00,975 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:00,996 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:01,967 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:01,977 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:02,009 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:02,277 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:02,287 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:02,513 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:02,590 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:02,590 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:02,641 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:02,651 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:02,677 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:02,688 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:04,446 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:04,467 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:04,477 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:04,503 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:04,514 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:04,534 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:04,604 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:06,248 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:06,259 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:06,326 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:06,347 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:06,389 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:06,399 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:06,410 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:06,415 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:08,603 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:08,614 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:08,624 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:08,811 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:09,388 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:09,588 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:10,976 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:10,982 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:10,992 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:11,336 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:11,346 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:16,060 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:16,071 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:16,081 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:16,087 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:16,092 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:16,097 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:16,108 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:16,118 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:16,129 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:16,139 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:16,150 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:21,595 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:21,601 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:22,075 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:22,085 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:22,096 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:22,106 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:22,117 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:22,122 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:22,132 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:22,143 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:22,148 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:22,154 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:22,164 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:22,175 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:23,736 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:23,737 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:23,737 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:23,737 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:23,737 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:23,737 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:23,737 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:24,625 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:24,625 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:24,626 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:25,539 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:25,547 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:25,559 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:25,581 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:25,588 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:25,692 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:27,503 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:27,656 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:27,663 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:27,669 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:27,688 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:27,714 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:28,652 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:29,779 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:29,779 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:29,779 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:29,780 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:29,780 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:29,780 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:29,780 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:29,780 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:29,780 - src.data.collector - ERROR - Error processing trade message: 'b'
+2024-11-22 09:22:33,717 - src.data.database.connection - INFO - MongoDB indexes created successfully
+2024-11-22 09:22:33,717 - src.data.database.connection - INFO - MongoDB connection established successfully to database: crypto_trading
+2024-11-22 09:22:34,438 - __main__ - INFO - Starting data collection...
+2024-11-22 09:22:34,978 - src.data.collector - INFO - Connected to Binance testnet
+2024-11-22 09:22:34,978 - src.data.collector - INFO - Server time: 2024-11-22 09:22:34.925000
+2024-11-22 09:22:34,980 - src.data.collector - ERROR - Error starting data collection: 'ThreadedWebsocketManager' object has no attribute 'start_socket'
+2024-11-22 09:22:34,980 - __main__ - ERROR - Error in main: 'ThreadedWebsocketManager' object has no attribute 'start_socket'
+2024-11-22 09:22:35,000 - src.data.database.connection - INFO - MongoDB connection closed
+2024-11-22 09:24:15,703 - src.data.database.connection - INFO - MongoDB indexes created successfully
+2024-11-22 09:24:15,704 - src.data.database.connection - INFO - MongoDB connection established successfully to database: crypto_trading
+2024-11-22 09:24:16,414 - __main__ - INFO - Starting data collection...
+2024-11-22 09:24:16,956 - src.data.collector - INFO - Connected to Binance testnet
+2024-11-22 09:24:16,956 - src.data.collector - INFO - Server time: 2024-11-22 09:24:16.902000
+2024-11-22 09:24:17,458 - src.data.collector - INFO - Started data collection for symbols: ['BTCUSDT', 'ETHUSDT']
+2024-11-22 09:30:30,793 - src.data.database.connection - INFO - MongoDB indexes created successfully
+2024-11-22 09:30:30,793 - src.data.database.connection - INFO - MongoDB connection established successfully to database: crypto_trading
+2024-11-22 09:30:30,793 - __main__ - INFO - Starting data collection...
+2024-11-22 09:30:30,793 - __main__ - ERROR - Error in main: 'BinanceDataCollector' object has no attribute 'logger'
+2024-11-22 09:30:30,815 - src.data.database.connection - INFO - MongoDB connection closed
+2024-11-22 09:31:47,709 - src.data.database.connection - INFO - MongoDB indexes created successfully
+2024-11-22 09:31:47,710 - src.data.database.connection - INFO - MongoDB connection established successfully to database: crypto_trading
+2024-11-22 09:31:48,488 - __main__ - INFO - Starting data collection...
+2024-11-22 09:31:49,200 - src.data.collector - INFO - Connected to Binance testnet
+2024-11-22 09:31:49,200 - src.data.collector - INFO - Server time: 2024-11-22 09:31:49.114000
+2024-11-22 09:31:49,201 - src.data.collector - ERROR - Error starting data collection: 'BinanceDataCollector' object has no attribute '_handle_socket_message'
+2024-11-22 09:31:49,202 - __main__ - ERROR - Error in main: 'BinanceDataCollector' object has no attribute '_handle_socket_message'
+2024-11-22 09:31:49,251 - src.data.database.connection - INFO - MongoDB connection closed
+2024-11-22 09:35:46,055 - src.data.database.connection - INFO - MongoDB indexes created successfully
+2024-11-22 09:35:46,056 - src.data.database.connection - INFO - MongoDB connection established successfully to database: crypto_trading
+2024-11-22 09:35:46,488 - __main__ - INFO - Starting data collection...
+2024-11-22 09:35:46,488 - __main__ - ERROR - Error in main: 'BinanceDataCollector' object has no attribute 'start_data_collection'
+2024-11-22 09:35:46,511 - src.data.database.connection - INFO - MongoDB connection closed
+2024-11-22 09:36:11,348 - src.data.database.connection - INFO - MongoDB indexes created successfully
+2024-11-22 09:36:11,348 - src.data.database.connection - INFO - MongoDB connection established successfully to database: crypto_trading
+2024-11-22 09:36:11,841 - __main__ - INFO - Starting data collection...
+2024-11-22 09:36:11,841 - __main__ - ERROR - Error in main: 'BinanceDataCollector' object has no attribute 'start_data_collection'
+2024-11-22 09:38:22,524 - src.data.database.connection - INFO - MongoDB indexes created successfully
+2024-11-22 09:38:22,525 - src.data.database.connection - INFO - MongoDB connection established successfully to database: crypto_trading
+2024-11-22 09:38:22,980 - __main__ - INFO - Starting data collection...
+2024-11-22 09:38:23,514 - src.data.collector - INFO - Connected to Binance testnet
+2024-11-22 09:38:23,514 - src.data.collector - INFO - Server time: 2024-11-22 09:38:23.465000
+2024-11-22 09:38:24,016 - src.data.collector - INFO - Started data collection for symbols: ['BTCUSDT', 'ETHUSDT']
+2024-11-22 09:38:24,017 - src.data.collector - INFO - Press Ctrl+C to stop collection
+2024-11-22 09:38:33,629 - src.data.collector - INFO - Stats after 10s - Klines: 6, Trades: 40, OrderBook: 96
+2024-11-22 09:38:33,800 - src.data.collector - INFO - Stats after 10s - Klines: 6, Trades: 41, OrderBook: 96
+2024-11-22 09:38:34,191 - src.data.collector - INFO - Stats after 10s - Klines: 6, Trades: 41, OrderBook: 100
+2024-11-22 09:38:34,349 - src.data.collector - INFO - Stats after 10s - Klines: 6, Trades: 41, OrderBook: 105
+2024-11-22 09:38:44,034 - src.data.collector - INFO - Stats after 20s - Klines: 11, Trades: 46, OrderBook: 148
+2024-11-22 09:38:44,239 - src.data.collector - INFO - Stats after 20s - Klines: 11, Trades: 46, OrderBook: 149
+2024-11-22 09:38:44,471 - src.data.collector - INFO - Stats after 20s - Klines: 11, Trades: 46, OrderBook: 151
+2024-11-22 09:38:54,479 - src.data.collector - INFO - Stats after 30s - Klines: 14, Trades: 58, OrderBook: 201
+2024-11-22 09:39:04,207 - src.data.collector - INFO - Stats after 40s - Klines: 17, Trades: 72, OrderBook: 258
+2024-11-22 09:39:04,312 - src.data.collector - INFO - Stats after 40s - Klines: 18, Trades: 72, OrderBook: 258
+2024-11-22 09:39:23,531 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 109, OrderBook: 507
+2024-11-22 09:39:23,571 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 110, OrderBook: 507
+2024-11-22 09:39:23,611 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 111, OrderBook: 507
+2024-11-22 09:39:23,651 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 112, OrderBook: 507
+2024-11-22 09:39:23,691 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 113, OrderBook: 507
+2024-11-22 09:39:23,731 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 114, OrderBook: 507
+2024-11-22 09:39:23,770 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 115, OrderBook: 507
+2024-11-22 09:39:23,819 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 116, OrderBook: 507
+2024-11-22 09:39:23,860 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 117, OrderBook: 507
+2024-11-22 09:39:23,905 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 118, OrderBook: 507
+2024-11-22 09:39:23,944 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 119, OrderBook: 507
+2024-11-22 09:39:23,983 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 120, OrderBook: 507
+2024-11-22 09:39:24,023 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 121, OrderBook: 507
+2024-11-22 09:39:24,068 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 122, OrderBook: 507
+2024-11-22 09:39:24,112 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 123, OrderBook: 507
+2024-11-22 09:39:24,152 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 124, OrderBook: 507
+2024-11-22 09:39:24,191 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 125, OrderBook: 507
+2024-11-22 09:39:24,232 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 126, OrderBook: 507
+2024-11-22 09:39:24,271 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 127, OrderBook: 507
+2024-11-22 09:39:24,322 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 128, OrderBook: 507
+2024-11-22 09:39:24,365 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 129, OrderBook: 507
+2024-11-22 09:39:24,406 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 130, OrderBook: 507
+2024-11-22 09:39:24,446 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 131, OrderBook: 507
+2024-11-22 09:39:24,486 - src.data.collector - INFO - Stats after 60s - Klines: 29, Trades: 132, OrderBook: 507
+2024-11-22 09:39:33,623 - src.data.collector - INFO - Stats after 70s - Klines: 45, Trades: 202, OrderBook: 691
+2024-11-22 09:39:34,165 - src.data.collector - INFO - Stats after 70s - Klines: 45, Trades: 202, OrderBook: 694
+2024-11-22 09:39:43,632 - src.data.collector - INFO - Stats after 80s - Klines: 49, Trades: 217, OrderBook: 750
+2024-11-22 09:39:53,565 - src.data.collector - INFO - Stats after 90s - Klines: 51, Trades: 224, OrderBook: 802
+2024-11-22 09:39:53,770 - src.data.collector - INFO - Stats after 90s - Klines: 51, Trades: 225, OrderBook: 802
+2024-11-22 09:39:54,078 - src.data.collector - INFO - Stats after 90s - Klines: 51, Trades: 226, OrderBook: 802
+2024-11-22 09:39:54,117 - src.data.collector - INFO - Stats after 90s - Klines: 51, Trades: 227, OrderBook: 802
+2024-11-22 09:39:54,180 - src.data.collector - INFO - Stats after 90s - Klines: 51, Trades: 228, OrderBook: 802
+2024-11-22 09:39:54,282 - src.data.collector - INFO - Stats after 90s - Klines: 51, Trades: 229, OrderBook: 802
+2024-11-22 09:39:54,385 - src.data.collector - INFO - Stats after 90s - Klines: 51, Trades: 230, OrderBook: 802
+2024-11-22 09:39:54,445 - src.data.collector - INFO - Stats after 90s - Klines: 51, Trades: 231, OrderBook: 802
+2024-11-22 09:40:03,543 - src.data.collector - INFO - Stats after 100s - Klines: 53, Trades: 233, OrderBook: 857
+2024-11-22 09:40:03,705 - src.data.collector - INFO - Stats after 100s - Klines: 53, Trades: 233, OrderBook: 858
+2024-11-22 09:40:13,517 - src.data.collector - INFO - Stats after 110s - Klines: 71, Trades: 256, OrderBook: 885
+2024-11-22 09:40:13,608 - src.data.collector - INFO - Stats after 110s - Klines: 71, Trades: 257, OrderBook: 885
+2024-11-22 09:40:13,739 - src.data.collector - INFO - Stats after 110s - Klines: 71, Trades: 258, OrderBook: 885
+2024-11-22 09:40:13,841 - src.data.collector - INFO - Stats after 110s - Klines: 71, Trades: 259, OrderBook: 885
+2024-11-22 09:40:13,943 - src.data.collector - INFO - Stats after 110s - Klines: 71, Trades: 260, OrderBook: 885
+2024-11-22 09:40:14,149 - src.data.collector - INFO - Stats after 110s - Klines: 71, Trades: 261, OrderBook: 885
+2024-11-22 09:40:14,251 - src.data.collector - INFO - Stats after 110s - Klines: 71, Trades: 262, OrderBook: 885
+2024-11-22 09:40:14,353 - src.data.collector - INFO - Stats after 110s - Klines: 71, Trades: 263, OrderBook: 885
+2024-11-22 09:40:14,455 - src.data.collector - INFO - Stats after 110s - Klines: 71, Trades: 264, OrderBook: 885
+2024-11-22 09:40:14,496 - src.data.collector - INFO - Stats after 110s - Klines: 71, Trades: 265, OrderBook: 885
+2024-11-22 09:40:23,688 - src.data.collector - INFO - Stats after 120s - Klines: 73, Trades: 303, OrderBook: 1090
+2024-11-22 09:40:23,725 - src.data.collector - INFO - Stats after 120s - Klines: 73, Trades: 303, OrderBook: 1091
+2024-11-22 09:40:23,997 - src.data.collector - INFO - Stats after 120s - Klines: 73, Trades: 303, OrderBook: 1100
+2024-11-22 09:40:33,621 - src.data.collector - INFO - Stats after 130s - Klines: 90, Trades: 358, OrderBook: 1289
+2024-11-22 09:40:34,177 - src.data.collector - INFO - Stats after 130s - Klines: 90, Trades: 358, OrderBook: 1292
+2024-11-22 09:40:44,459 - src.data.collector - INFO - Stats after 140s - Klines: 95, Trades: 373, OrderBook: 1348
+2024-11-22 09:41:03,609 - src.data.collector - INFO - Stats after 160s - Klines: 101, Trades: 409, OrderBook: 1434
+2024-11-22 09:41:04,177 - src.data.collector - INFO - Stats after 160s - Klines: 101, Trades: 410, OrderBook: 1434
+2024-11-22 09:41:04,223 - src.data.collector - INFO - Stats after 160s - Klines: 101, Trades: 411, OrderBook: 1434
+2024-11-22 09:41:13,854 - src.data.collector - INFO - Stats after 170s - Klines: 101, Trades: 422, OrderBook: 1490
+2024-11-22 09:41:14,054 - src.data.collector - INFO - Stats after 170s - Klines: 102, Trades: 422, OrderBook: 1490
+2024-11-22 09:41:14,146 - src.data.collector - INFO - Stats after 170s - Klines: 103, Trades: 422, OrderBook: 1490
+2024-11-22 09:41:14,339 - src.data.collector - INFO - Stats after 170s - Klines: 104, Trades: 422, OrderBook: 1490
+2024-11-22 09:41:14,446 - src.data.collector - INFO - Stats after 170s - Klines: 105, Trades: 422, OrderBook: 1490
+2024-11-22 09:41:24,089 - src.data.collector - INFO - Stats after 180s - Klines: 115, Trades: 459, OrderBook: 1506
+2024-11-22 09:41:33,566 - src.data.collector - INFO - Stats after 190s - Klines: 115, Trades: 459, OrderBook: 1656
+2024-11-22 09:41:33,942 - src.data.collector - INFO - Stats after 190s - Klines: 115, Trades: 459, OrderBook: 1668
+2024-11-22 09:41:34,450 - src.data.collector - INFO - Stats after 190s - Klines: 115, Trades: 459, OrderBook: 1684
+2024-11-22 09:41:43,665 - src.data.collector - INFO - Stats after 200s - Klines: 128, Trades: 508, OrderBook: 1900
+2024-11-22 09:41:43,966 - src.data.collector - INFO - Stats after 200s - Klines: 128, Trades: 508, OrderBook: 1910
+2024-11-22 09:41:44,343 - src.data.collector - INFO - Stats after 200s - Klines: 128, Trades: 508, OrderBook: 1922
+2024-11-22 09:41:53,539 - src.data.collector - INFO - Stats after 210s - Klines: 142, Trades: 559, OrderBook: 2072
+2024-11-22 09:41:53,581 - src.data.collector - INFO - Stats after 210s - Klines: 142, Trades: 560, OrderBook: 2072
+2024-11-22 09:41:53,621 - src.data.collector - INFO - Stats after 210s - Klines: 143, Trades: 560, OrderBook: 2072
+2024-11-22 09:41:53,718 - src.data.collector - INFO - Stats after 210s - Klines: 143, Trades: 561, OrderBook: 2072
+2024-11-22 09:41:53,758 - src.data.collector - INFO - Stats after 210s - Klines: 143, Trades: 562, OrderBook: 2072
+2024-11-22 09:41:53,797 - src.data.collector - INFO - Stats after 210s - Klines: 143, Trades: 563, OrderBook: 2072
+2024-11-22 09:41:53,832 - src.data.collector - INFO - Stats after 210s - Klines: 143, Trades: 564, OrderBook: 2072
+2024-11-22 09:41:53,866 - src.data.collector - INFO - Stats after 210s - Klines: 143, Trades: 565, OrderBook: 2072
+2024-11-22 09:41:54,265 - src.data.collector - INFO - Stats after 210s - Klines: 143, Trades: 565, OrderBook: 2078
+2024-11-22 09:42:03,614 - src.data.collector - INFO - Stats after 220s - Klines: 146, Trades: 579, OrderBook: 2131
+2024-11-22 09:42:03,925 - src.data.collector - INFO - Stats after 220s - Klines: 146, Trades: 580, OrderBook: 2131
+2024-11-22 09:42:04,026 - src.data.collector - INFO - Stats after 220s - Klines: 146, Trades: 581, OrderBook: 2131
+2024-11-22 09:42:04,067 - src.data.collector - INFO - Stats after 220s - Klines: 147, Trades: 581, OrderBook: 2131
+2024-11-22 09:42:04,231 - src.data.collector - INFO - Stats after 220s - Klines: 148, Trades: 581, OrderBook: 2131
+2024-11-22 09:42:13,754 - src.data.collector - INFO - Stats after 230s - Klines: 150, Trades: 590, OrderBook: 2189
+2024-11-22 09:42:23,585 - src.data.collector - INFO - Stats after 240s - Klines: 158, Trades: 613, OrderBook: 2223
+2024-11-22 09:42:23,687 - src.data.collector - INFO - Stats after 240s - Klines: 158, Trades: 614, OrderBook: 2223
+2024-11-22 09:42:23,790 - src.data.collector - INFO - Stats after 240s - Klines: 158, Trades: 615, OrderBook: 2223
+2024-11-22 09:42:23,892 - src.data.collector - INFO - Stats after 240s - Klines: 158, Trades: 616, OrderBook: 2223
+2024-11-22 09:42:24,097 - src.data.collector - INFO - Stats after 240s - Klines: 158, Trades: 617, OrderBook: 2223
+2024-11-22 09:42:24,199 - src.data.collector - INFO - Stats after 240s - Klines: 158, Trades: 618, OrderBook: 2223
+2024-11-22 09:42:24,404 - src.data.collector - INFO - Stats after 240s - Klines: 158, Trades: 619, OrderBook: 2223
+2024-11-22 09:42:24,506 - src.data.collector - INFO - Stats after 240s - Klines: 158, Trades: 620, OrderBook: 2223
+2024-11-22 09:42:34,343 - src.data.collector - INFO - Stats after 250s - Klines: 158, Trades: 631, OrderBook: 2282
+2024-11-22 09:42:34,439 - src.data.collector - INFO - Stats after 250s - Klines: 158, Trades: 631, OrderBook: 2283
+2024-11-22 09:42:53,516 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 648, OrderBook: 2522
+2024-11-22 09:42:53,560 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 649, OrderBook: 2522
+2024-11-22 09:42:53,604 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 650, OrderBook: 2522
+2024-11-22 09:42:53,639 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 651, OrderBook: 2522
+2024-11-22 09:42:53,680 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 652, OrderBook: 2522
+2024-11-22 09:42:53,720 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 653, OrderBook: 2522
+2024-11-22 09:42:53,759 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 654, OrderBook: 2522
+2024-11-22 09:42:53,795 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 655, OrderBook: 2522
+2024-11-22 09:42:53,832 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 656, OrderBook: 2522
+2024-11-22 09:42:53,871 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 657, OrderBook: 2522
+2024-11-22 09:42:53,905 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 658, OrderBook: 2522
+2024-11-22 09:42:53,954 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 659, OrderBook: 2522
+2024-11-22 09:42:53,990 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 660, OrderBook: 2522
+2024-11-22 09:42:54,029 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 661, OrderBook: 2522
+2024-11-22 09:42:54,068 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 662, OrderBook: 2522
+2024-11-22 09:42:54,108 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 663, OrderBook: 2522
+2024-11-22 09:42:54,141 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 664, OrderBook: 2522
+2024-11-22 09:42:54,175 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 665, OrderBook: 2522
+2024-11-22 09:42:54,209 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 666, OrderBook: 2522
+2024-11-22 09:42:54,248 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 667, OrderBook: 2522
+2024-11-22 09:42:54,299 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 668, OrderBook: 2522
+2024-11-22 09:42:54,339 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 669, OrderBook: 2522
+2024-11-22 09:42:54,378 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 670, OrderBook: 2522
+2024-11-22 09:42:54,418 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 671, OrderBook: 2522
+2024-11-22 09:42:54,458 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 672, OrderBook: 2522
+2024-11-22 09:42:54,499 - src.data.collector - INFO - Stats after 270s - Klines: 178, Trades: 673, OrderBook: 2522
+2024-11-22 09:43:03,579 - src.data.collector - INFO - Stats after 280s - Klines: 184, Trades: 719, OrderBook: 2756
+2024-11-22 09:43:03,984 - src.data.collector - INFO - Stats after 280s - Klines: 184, Trades: 719, OrderBook: 2769
+2024-11-22 09:43:04,119 - src.data.collector - INFO - Stats after 280s - Klines: 185, Trades: 719, OrderBook: 2769
+2024-11-22 09:43:04,158 - src.data.collector - INFO - Stats after 280s - Klines: 186, Trades: 719, OrderBook: 2769
+2024-11-22 09:43:04,199 - src.data.collector - INFO - Stats after 280s - Klines: 187, Trades: 719, OrderBook: 2769
+2024-11-22 09:43:04,239 - src.data.collector - INFO - Stats after 280s - Klines: 187, Trades: 720, OrderBook: 2769
+2024-11-22 09:43:04,281 - src.data.collector - INFO - Stats after 280s - Klines: 187, Trades: 721, OrderBook: 2769
+2024-11-22 09:43:04,320 - src.data.collector - INFO - Stats after 280s - Klines: 187, Trades: 722, OrderBook: 2769
+2024-11-22 09:43:04,361 - src.data.collector - INFO - Stats after 280s - Klines: 187, Trades: 723, OrderBook: 2769
+2024-11-22 09:43:04,400 - src.data.collector - INFO - Stats after 280s - Klines: 187, Trades: 724, OrderBook: 2769
+2024-11-22 09:43:04,442 - src.data.collector - INFO - Stats after 280s - Klines: 187, Trades: 725, OrderBook: 2769
+2024-11-22 09:43:04,487 - src.data.collector - INFO - Stats after 280s - Klines: 187, Trades: 726, OrderBook: 2769
+2024-11-22 09:43:14,070 - src.data.collector - INFO - Stats after 290s - Klines: 198, Trades: 761, OrderBook: 2918
+2024-11-22 09:43:14,338 - src.data.collector - INFO - Stats after 290s - Klines: 199, Trades: 761, OrderBook: 2918
+2024-11-22 09:43:14,479 - src.data.collector - INFO - Stats after 290s - Klines: 199, Trades: 762, OrderBook: 2918
+2024-11-22 09:43:23,773 - src.data.collector - INFO - Stats after 300s - Klines: 202, Trades: 772, OrderBook: 2969
+2024-11-22 09:43:23,937 - src.data.collector - INFO - Stats after 300s - Klines: 202, Trades: 773, OrderBook: 2969
+2024-11-22 09:43:24,368 - src.data.collector - INFO - Stats after 300s - Klines: 203, Trades: 773, OrderBook: 2969
+2024-11-22 09:43:24,514 - src.data.collector - INFO - Stats after 300s - Klines: 204, Trades: 773, OrderBook: 2969
+2024-11-22 09:43:34,391 - src.data.collector - INFO - Stats after 310s - Klines: 205, Trades: 773, OrderBook: 3039
+2024-11-22 09:43:43,971 - src.data.collector - INFO - Stats after 320s - Klines: 213, Trades: 782, OrderBook: 3091
+2024-11-22 09:43:44,074 - src.data.collector - INFO - Stats after 320s - Klines: 213, Trades: 782, OrderBook: 3092
+2024-11-22 09:43:44,488 - src.data.collector - INFO - Stats after 320s - Klines: 213, Trades: 782, OrderBook: 3096
+2024-11-22 09:43:53,699 - src.data.collector - INFO - Stats after 330s - Klines: 219, Trades: 816, OrderBook: 3122
+2024-11-22 09:43:53,740 - src.data.collector - INFO - Stats after 330s - Klines: 219, Trades: 817, OrderBook: 3122
+2024-11-22 09:43:54,008 - src.data.collector - INFO - Stats after 330s - Klines: 219, Trades: 818, OrderBook: 3122
+2024-11-22 09:43:54,211 - src.data.collector - INFO - Stats after 330s - Klines: 219, Trades: 819, OrderBook: 3122
+2024-11-22 09:43:54,257 - src.data.collector - INFO - Stats after 330s - Klines: 219, Trades: 820, OrderBook: 3122
+2024-11-22 09:43:54,416 - src.data.collector - INFO - Stats after 330s - Klines: 219, Trades: 821, OrderBook: 3122
+2024-11-22 09:44:03,531 - src.data.collector - INFO - Stats after 340s - Klines: 227, Trades: 886, OrderBook: 3229
+2024-11-22 09:44:03,778 - src.data.collector - INFO - Stats after 340s - Klines: 227, Trades: 886, OrderBook: 3237
+2024-11-22 09:44:03,818 - src.data.collector - INFO - Stats after 340s - Klines: 227, Trades: 886, OrderBook: 3238
+2024-11-22 09:44:03,996 - src.data.collector - INFO - Stats after 340s - Klines: 227, Trades: 886, OrderBook: 3243
+2024-11-22 09:44:04,065 - src.data.collector - INFO - Stats after 340s - Klines: 227, Trades: 886, OrderBook: 3245
+2024-11-22 09:44:04,106 - src.data.collector - INFO - Stats after 340s - Klines: 227, Trades: 886, OrderBook: 3246
+2024-11-22 09:44:04,354 - src.data.collector - INFO - Stats after 340s - Klines: 227, Trades: 886, OrderBook: 3254
+2024-11-22 09:44:04,429 - src.data.collector - INFO - Stats after 340s - Klines: 227, Trades: 886, OrderBook: 3256
+2024-11-22 09:44:13,638 - src.data.collector - INFO - Stats after 350s - Klines: 245, Trades: 915, OrderBook: 3456
+2024-11-22 09:44:13,678 - src.data.collector - INFO - Stats after 350s - Klines: 245, Trades: 916, OrderBook: 3456
+2024-11-22 09:44:14,294 - src.data.collector - INFO - Stats after 350s - Klines: 245, Trades: 916, OrderBook: 3462
+2024-11-22 09:44:14,397 - src.data.collector - INFO - Stats after 350s - Klines: 245, Trades: 916, OrderBook: 3465
+2024-11-22 09:44:24,420 - src.data.collector - INFO - Stats after 360s - Klines: 249, Trades: 921, OrderBook: 3521
+2024-11-22 09:44:43,774 - src.data.collector - INFO - Stats after 380s - Klines: 254, Trades: 951, OrderBook: 3612
+2024-11-22 09:44:44,081 - src.data.collector - INFO - Stats after 380s - Klines: 255, Trades: 951, OrderBook: 3612
+2024-11-22 09:44:44,183 - src.data.collector - INFO - Stats after 380s - Klines: 256, Trades: 951, OrderBook: 3612
+2024-11-22 09:44:44,362 - src.data.collector - INFO - Stats after 380s - Klines: 257, Trades: 951, OrderBook: 3612
+2024-11-22 09:44:44,489 - src.data.collector - INFO - Stats after 380s - Klines: 257, Trades: 952, OrderBook: 3612
+2024-11-22 09:44:54,392 - src.data.collector - INFO - Stats after 390s - Klines: 257, Trades: 968, OrderBook: 3665
+2024-11-22 09:45:13,572 - src.data.collector - INFO - Stats after 410s - Klines: 269, Trades: 983, OrderBook: 3756
+2024-11-22 09:45:13,675 - src.data.collector - INFO - Stats after 410s - Klines: 269, Trades: 984, OrderBook: 3756
+2024-11-22 09:45:13,777 - src.data.collector - INFO - Stats after 410s - Klines: 269, Trades: 985, OrderBook: 3756
+2024-11-22 09:45:13,819 - src.data.collector - INFO - Stats after 410s - Klines: 269, Trades: 986, OrderBook: 3756
+2024-11-22 09:45:13,987 - src.data.collector - INFO - Stats after 410s - Klines: 269, Trades: 987, OrderBook: 3756
+2024-11-22 09:45:14,029 - src.data.collector - INFO - Stats after 410s - Klines: 269, Trades: 988, OrderBook: 3756
+2024-11-22 09:45:14,083 - src.data.collector - INFO - Stats after 410s - Klines: 269, Trades: 989, OrderBook: 3756
+2024-11-22 09:45:14,187 - src.data.collector - INFO - Stats after 410s - Klines: 269, Trades: 990, OrderBook: 3756
+2024-11-22 09:45:14,305 - src.data.collector - INFO - Stats after 410s - Klines: 269, Trades: 991, OrderBook: 3756
+2024-11-22 09:45:14,391 - src.data.collector - INFO - Stats after 410s - Klines: 269, Trades: 992, OrderBook: 3756
+2024-11-22 09:45:14,442 - src.data.collector - INFO - Stats after 410s - Klines: 269, Trades: 993, OrderBook: 3756
+2024-11-22 09:45:14,482 - src.data.collector - INFO - Stats after 410s - Klines: 269, Trades: 994, OrderBook: 3756
+2024-11-22 09:45:23,635 - src.data.collector - INFO - Stats after 420s - Klines: 280, Trades: 1038, OrderBook: 3996
+2024-11-22 09:45:23,709 - src.data.collector - INFO - Stats after 420s - Klines: 280, Trades: 1038, OrderBook: 3998
+2024-11-22 09:45:24,076 - src.data.collector - INFO - Stats after 420s - Klines: 280, Trades: 1038, OrderBook: 4010
+2024-11-22 09:45:24,326 - src.data.collector - INFO - Stats after 420s - Klines: 280, Trades: 1038, OrderBook: 4018
+2024-11-22 09:45:24,367 - src.data.collector - INFO - Stats after 420s - Klines: 280, Trades: 1038, OrderBook: 4019
+2024-11-22 09:45:33,519 - src.data.collector - INFO - Stats after 430s - Klines: 297, Trades: 1099, OrderBook: 4216
+2024-11-22 09:45:33,560 - src.data.collector - INFO - Stats after 430s - Klines: 297, Trades: 1100, OrderBook: 4216
+2024-11-22 09:45:33,594 - src.data.collector - INFO - Stats after 430s - Klines: 297, Trades: 1101, OrderBook: 4216
+2024-11-22 09:45:33,869 - src.data.collector - INFO - Stats after 430s - Klines: 297, Trades: 1101, OrderBook: 4225
+2024-11-22 09:45:34,120 - src.data.collector - INFO - Stats after 430s - Klines: 297, Trades: 1101, OrderBook: 4233
+2024-11-22 09:45:34,450 - src.data.collector - INFO - Stats after 430s - Klines: 297, Trades: 1101, OrderBook: 4244
+2024-11-22 09:45:43,516 - src.data.collector - INFO - Stats after 440s - Klines: 308, Trades: 1137, OrderBook: 4409
+2024-11-22 09:45:43,598 - src.data.collector - INFO - Stats after 440s - Klines: 309, Trades: 1137, OrderBook: 4409
+2024-11-22 09:45:53,613 - src.data.collector - INFO - Stats after 450s - Klines: 311, Trades: 1158, OrderBook: 4450
+2024-11-22 09:45:53,715 - src.data.collector - INFO - Stats after 450s - Klines: 311, Trades: 1159, OrderBook: 4450
+2024-11-22 09:45:53,919 - src.data.collector - INFO - Stats after 450s - Klines: 311, Trades: 1160, OrderBook: 4450
+2024-11-22 09:46:03,646 - src.data.collector - INFO - Stats after 460s - Klines: 313, Trades: 1178, OrderBook: 4502
+2024-11-22 09:46:13,681 - src.data.collector - INFO - Stats after 470s - Klines: 315, Trades: 1178, OrderBook: 4569
+2024-11-22 09:46:14,093 - src.data.collector - INFO - Stats after 470s - Klines: 316, Trades: 1178, OrderBook: 4569
+2024-11-22 09:46:14,192 - src.data.collector - INFO - Stats after 470s - Klines: 317, Trades: 1178, OrderBook: 4569
+2024-11-22 09:46:14,292 - src.data.collector - INFO - Stats after 470s - Klines: 318, Trades: 1178, OrderBook: 4569
+2024-11-22 09:46:14,399 - src.data.collector - INFO - Stats after 470s - Klines: 319, Trades: 1178, OrderBook: 4569
+2024-11-22 09:46:14,444 - src.data.collector - INFO - Stats after 470s - Klines: 320, Trades: 1178, OrderBook: 4569
+2024-11-22 09:46:14,484 - src.data.collector - INFO - Stats after 470s - Klines: 321, Trades: 1178, OrderBook: 4569
+2024-11-22 09:46:23,922 - src.data.collector - INFO - Stats after 480s - Klines: 329, Trades: 1217, OrderBook: 4584
+2024-11-22 09:46:33,585 - src.data.collector - INFO - Stats after 490s - Klines: 329, Trades: 1217, OrderBook: 4787
+2024-11-22 09:46:33,630 - src.data.collector - INFO - Stats after 490s - Klines: 329, Trades: 1217, OrderBook: 4788
+2024-11-22 09:46:34,054 - src.data.collector - INFO - Stats after 490s - Klines: 329, Trades: 1217, OrderBook: 4801
+2024-11-22 09:46:43,583 - src.data.collector - INFO - Stats after 500s - Klines: 339, Trades: 1248, OrderBook: 5048
+2024-11-22 09:46:43,623 - src.data.collector - INFO - Stats after 500s - Klines: 340, Trades: 1248, OrderBook: 5048
+2024-11-22 09:46:43,663 - src.data.collector - INFO - Stats after 500s - Klines: 341, Trades: 1248, OrderBook: 5048
+2024-11-22 09:46:43,705 - src.data.collector - INFO - Stats after 500s - Klines: 342, Trades: 1248, OrderBook: 5048
+2024-11-22 09:46:43,744 - src.data.collector - INFO - Stats after 500s - Klines: 343, Trades: 1248, OrderBook: 5048
+2024-11-22 09:46:43,784 - src.data.collector - INFO - Stats after 500s - Klines: 344, Trades: 1248, OrderBook: 5048
+2024-11-22 09:46:43,823 - src.data.collector - INFO - Stats after 500s - Klines: 345, Trades: 1248, OrderBook: 5048
+2024-11-22 09:46:44,293 - src.data.collector - INFO - Stats after 500s - Klines: 345, Trades: 1248, OrderBook: 5051
+2024-11-22 09:46:53,618 - src.data.collector - INFO - Stats after 510s - Klines: 358, Trades: 1298, OrderBook: 5193
+2024-11-22 09:46:54,336 - src.data.collector - INFO - Stats after 510s - Klines: 358, Trades: 1298, OrderBook: 5197
+2024-11-22 09:47:03,553 - src.data.collector - INFO - Stats after 520s - Klines: 360, Trades: 1305, OrderBook: 5256
+2024-11-22 09:47:03,660 - src.data.collector - INFO - Stats after 520s - Klines: 361, Trades: 1305, OrderBook: 5256
+2024-11-22 09:47:03,860 - src.data.collector - INFO - Stats after 520s - Klines: 362, Trades: 1305, OrderBook: 5256
+2024-11-22 09:47:04,476 - src.data.collector - INFO - Stats after 520s - Klines: 362, Trades: 1306, OrderBook: 5256
+2024-11-22 09:47:23,521 - src.data.collector - INFO - Stats after 540s - Klines: 372, Trades: 1339, OrderBook: 5337
+2024-11-22 09:47:23,623 - src.data.collector - INFO - Stats after 540s - Klines: 372, Trades: 1340, OrderBook: 5337
+2024-11-22 09:47:23,833 - src.data.collector - INFO - Stats after 540s - Klines: 372, Trades: 1341, OrderBook: 5337
+2024-11-22 09:47:23,931 - src.data.collector - INFO - Stats after 540s - Klines: 372, Trades: 1342, OrderBook: 5337
+2024-11-22 09:47:24,135 - src.data.collector - INFO - Stats after 540s - Klines: 372, Trades: 1343, OrderBook: 5337
+2024-11-22 09:47:33,557 - src.data.collector - INFO - Stats after 550s - Klines: 372, Trades: 1346, OrderBook: 5403
+2024-11-22 09:47:34,114 - src.data.collector - INFO - Stats after 550s - Klines: 372, Trades: 1346, OrderBook: 5409
+2024-11-22 09:47:34,273 - src.data.collector - INFO - Stats after 550s - Klines: 372, Trades: 1346, OrderBook: 5411
+2024-11-22 09:47:44,303 - src.data.collector - INFO - Stats after 560s - Klines: 377, Trades: 1347, OrderBook: 5475
+2024-11-22 09:47:44,411 - src.data.collector - INFO - Stats after 560s - Klines: 377, Trades: 1348, OrderBook: 5475
+2024-11-22 09:47:44,451 - src.data.collector - INFO - Stats after 560s - Klines: 377, Trades: 1349, OrderBook: 5475
+2024-11-22 09:47:44,513 - src.data.collector - INFO - Stats after 560s - Klines: 377, Trades: 1350, OrderBook: 5475
+2024-11-22 09:47:53,605 - src.data.collector - INFO - Stats after 570s - Klines: 385, Trades: 1385, OrderBook: 5582
+2024-11-22 09:47:53,976 - src.data.collector - INFO - Stats after 570s - Klines: 385, Trades: 1385, OrderBook: 5594
+2024-11-22 09:47:54,126 - src.data.collector - INFO - Stats after 570s - Klines: 385, Trades: 1385, OrderBook: 5598
+2024-11-22 09:47:54,355 - src.data.collector - INFO - Stats after 570s - Klines: 385, Trades: 1385, OrderBook: 5605
+2024-11-22 09:48:03,673 - src.data.collector - INFO - Stats after 580s - Klines: 402, Trades: 1426, OrderBook: 5834
+2024-11-22 09:48:03,713 - src.data.collector - INFO - Stats after 580s - Klines: 402, Trades: 1426, OrderBook: 5835
+2024-11-22 09:48:03,871 - src.data.collector - INFO - Stats after 580s - Klines: 402, Trades: 1426, OrderBook: 5840
+2024-11-22 09:48:13,632 - src.data.collector - INFO - Stats after 590s - Klines: 415, Trades: 1478, OrderBook: 6017
+2024-11-22 09:48:13,672 - src.data.collector - INFO - Stats after 590s - Klines: 416, Trades: 1478, OrderBook: 6017
+2024-11-22 09:48:14,181 - src.data.collector - INFO - Stats after 590s - Klines: 416, Trades: 1478, OrderBook: 6020
+2024-11-22 09:48:23,529 - src.data.collector - INFO - Stats after 600s - Klines: 421, Trades: 1495, OrderBook: 6067
+2024-11-22 09:48:23,836 - src.data.collector - INFO - Stats after 600s - Klines: 421, Trades: 1496, OrderBook: 6067
+2024-11-22 09:48:24,450 - src.data.collector - INFO - Stats after 600s - Klines: 421, Trades: 1496, OrderBook: 6072
+2024-11-22 09:48:34,285 - src.data.collector - INFO - Stats after 610s - Klines: 422, Trades: 1496, OrderBook: 6132
+2024-11-22 09:48:34,338 - src.data.collector - INFO - Stats after 610s - Klines: 422, Trades: 1496, OrderBook: 6133
+2024-11-22 09:48:43,568 - src.data.collector - INFO - Stats after 620s - Klines: 422, Trades: 1500, OrderBook: 6185
+2024-11-22 09:48:43,704 - src.data.collector - INFO - Stats after 620s - Klines: 422, Trades: 1501, OrderBook: 6185
+2024-11-22 09:48:43,906 - src.data.collector - INFO - Stats after 620s - Klines: 422, Trades: 1502, OrderBook: 6185
+2024-11-22 09:48:44,214 - src.data.collector - INFO - Stats after 620s - Klines: 422, Trades: 1503, OrderBook: 6185
+2024-11-22 09:48:44,316 - src.data.collector - INFO - Stats after 620s - Klines: 422, Trades: 1504, OrderBook: 6185
+2024-11-22 09:48:44,365 - src.data.collector - INFO - Stats after 620s - Klines: 422, Trades: 1505, OrderBook: 6185
+2024-11-22 09:48:54,249 - src.data.collector - INFO - Stats after 630s - Klines: 430, Trades: 1517, OrderBook: 6230
+2024-11-22 09:48:54,392 - src.data.collector - INFO - Stats after 630s - Klines: 430, Trades: 1517, OrderBook: 6231
+2024-11-22 09:49:03,632 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1517, OrderBook: 6327
+2024-11-22 09:49:03,674 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1518, OrderBook: 6327
+2024-11-22 09:49:03,720 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1519, OrderBook: 6327
+2024-11-22 09:49:03,760 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1520, OrderBook: 6327
+2024-11-22 09:49:03,802 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1521, OrderBook: 6327
+2024-11-22 09:49:03,843 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1522, OrderBook: 6327
+2024-11-22 09:49:03,895 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1523, OrderBook: 6327
+2024-11-22 09:49:03,934 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1524, OrderBook: 6327
+2024-11-22 09:49:03,976 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1525, OrderBook: 6327
+2024-11-22 09:49:04,017 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1526, OrderBook: 6327
+2024-11-22 09:49:04,057 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1527, OrderBook: 6327
+2024-11-22 09:49:04,097 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1528, OrderBook: 6327
+2024-11-22 09:49:04,137 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1529, OrderBook: 6327
+2024-11-22 09:49:04,177 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1530, OrderBook: 6327
+2024-11-22 09:49:04,217 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1531, OrderBook: 6327
+2024-11-22 09:49:04,257 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1532, OrderBook: 6327
+2024-11-22 09:49:04,299 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1533, OrderBook: 6327
+2024-11-22 09:49:04,339 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1534, OrderBook: 6327
+2024-11-22 09:49:04,386 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1535, OrderBook: 6327
+2024-11-22 09:49:04,426 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1536, OrderBook: 6327
+2024-11-22 09:49:04,466 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1537, OrderBook: 6327
+2024-11-22 09:49:04,506 - src.data.collector - INFO - Stats after 640s - Klines: 430, Trades: 1538, OrderBook: 6327
+2024-11-22 09:49:13,771 - src.data.collector - INFO - Stats after 650s - Klines: 444, Trades: 1666, OrderBook: 6450
+2024-11-22 09:49:13,867 - src.data.collector - INFO - Stats after 650s - Klines: 444, Trades: 1666, OrderBook: 6453
+2024-11-22 09:49:14,125 - src.data.collector - INFO - Stats after 650s - Klines: 444, Trades: 1666, OrderBook: 6461
+2024-11-22 09:49:14,165 - src.data.collector - INFO - Stats after 650s - Klines: 444, Trades: 1666, OrderBook: 6462
+2024-11-22 09:49:14,378 - src.data.collector - INFO - Stats after 650s - Klines: 444, Trades: 1666, OrderBook: 6469
+2024-11-22 09:49:23,537 - src.data.collector - INFO - Stats after 660s - Klines: 464, Trades: 1699, OrderBook: 6696
+2024-11-22 09:49:23,630 - src.data.collector - INFO - Stats after 660s - Klines: 464, Trades: 1700, OrderBook: 6696
+2024-11-22 09:49:23,670 - src.data.collector - INFO - Stats after 660s - Klines: 464, Trades: 1701, OrderBook: 6696
+2024-11-22 09:49:23,709 - src.data.collector - INFO - Stats after 660s - Klines: 464, Trades: 1702, OrderBook: 6696
+2024-11-22 09:49:23,748 - src.data.collector - INFO - Stats after 660s - Klines: 464, Trades: 1703, OrderBook: 6696
+2024-11-22 09:49:23,788 - src.data.collector - INFO - Stats after 660s - Klines: 464, Trades: 1704, OrderBook: 6696
+2024-11-22 09:49:23,832 - src.data.collector - INFO - Stats after 660s - Klines: 465, Trades: 1704, OrderBook: 6696
+2024-11-22 09:49:23,872 - src.data.collector - INFO - Stats after 660s - Klines: 466, Trades: 1704, OrderBook: 6696
+2024-11-22 09:49:23,913 - src.data.collector - INFO - Stats after 660s - Klines: 466, Trades: 1704, OrderBook: 6697
+2024-11-22 09:49:24,220 - src.data.collector - INFO - Stats after 660s - Klines: 466, Trades: 1704, OrderBook: 6707
+2024-11-22 09:49:33,572 - src.data.collector - INFO - Stats after 670s - Klines: 474, Trades: 1733, OrderBook: 6847
+2024-11-22 09:49:33,777 - src.data.collector - INFO - Stats after 670s - Klines: 474, Trades: 1734, OrderBook: 6847
+2024-11-22 09:49:53,644 - src.data.collector - INFO - Stats after 690s - Klines: 483, Trades: 1759, OrderBook: 6956
+2024-11-22 09:49:53,745 - src.data.collector - INFO - Stats after 690s - Klines: 483, Trades: 1760, OrderBook: 6956
+2024-11-22 09:49:53,847 - src.data.collector - INFO - Stats after 690s - Klines: 483, Trades: 1761, OrderBook: 6956
+2024-11-22 09:49:53,950 - src.data.collector - INFO - Stats after 690s - Klines: 483, Trades: 1762, OrderBook: 6956
+2024-11-22 09:49:54,155 - src.data.collector - INFO - Stats after 690s - Klines: 483, Trades: 1763, OrderBook: 6956
+2024-11-22 09:49:54,257 - src.data.collector - INFO - Stats after 690s - Klines: 483, Trades: 1764, OrderBook: 6956
+2024-11-22 09:49:54,337 - src.data.collector - INFO - Stats after 690s - Klines: 483, Trades: 1765, OrderBook: 6956
+2024-11-22 09:49:54,462 - src.data.collector - INFO - Stats after 690s - Klines: 483, Trades: 1766, OrderBook: 6956
+2024-11-22 09:50:03,786 - src.data.collector - INFO - Stats after 700s - Klines: 487, Trades: 1784, OrderBook: 6998
+2024-11-22 09:50:03,985 - src.data.collector - INFO - Stats after 700s - Klines: 487, Trades: 1784, OrderBook: 6999
+2024-11-22 09:50:04,364 - src.data.collector - INFO - Stats after 700s - Klines: 487, Trades: 1784, OrderBook: 7001
+2024-11-22 09:50:13,616 - src.data.collector - INFO - Stats after 710s - Klines: 492, Trades: 1812, OrderBook: 7038
+2024-11-22 09:50:13,918 - src.data.collector - INFO - Stats after 710s - Klines: 492, Trades: 1813, OrderBook: 7038
+2024-11-22 09:50:23,676 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1819, OrderBook: 7219
+2024-11-22 09:50:23,716 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1820, OrderBook: 7219
+2024-11-22 09:50:23,751 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1821, OrderBook: 7219
+2024-11-22 09:50:23,796 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1822, OrderBook: 7219
+2024-11-22 09:50:23,833 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1823, OrderBook: 7219
+2024-11-22 09:50:23,873 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1824, OrderBook: 7219
+2024-11-22 09:50:23,913 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1825, OrderBook: 7219
+2024-11-22 09:50:23,953 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1826, OrderBook: 7219
+2024-11-22 09:50:23,994 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1827, OrderBook: 7219
+2024-11-22 09:50:24,033 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1828, OrderBook: 7219
+2024-11-22 09:50:24,075 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1829, OrderBook: 7219
+2024-11-22 09:50:24,124 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1830, OrderBook: 7219
+2024-11-22 09:50:24,164 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1831, OrderBook: 7219
+2024-11-22 09:50:24,205 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1832, OrderBook: 7219
+2024-11-22 09:50:24,245 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1833, OrderBook: 7219
+2024-11-22 09:50:24,295 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1834, OrderBook: 7219
+2024-11-22 09:50:24,334 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1835, OrderBook: 7219
+2024-11-22 09:50:24,374 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1836, OrderBook: 7219
+2024-11-22 09:50:24,413 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1837, OrderBook: 7219
+2024-11-22 09:50:24,453 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1838, OrderBook: 7219
+2024-11-22 09:50:24,492 - src.data.collector - INFO - Stats after 720s - Klines: 500, Trades: 1839, OrderBook: 7219
+2024-11-22 09:50:33,540 - src.data.collector - INFO - Stats after 730s - Klines: 515, Trades: 1899, OrderBook: 7432
+2024-11-22 09:50:33,585 - src.data.collector - INFO - Stats after 730s - Klines: 515, Trades: 1899, OrderBook: 7433
+2024-11-22 09:50:33,683 - src.data.collector - INFO - Stats after 730s - Klines: 515, Trades: 1899, OrderBook: 7436
+2024-11-22 09:50:33,717 - src.data.collector - INFO - Stats after 730s - Klines: 515, Trades: 1900, OrderBook: 7436
+2024-11-22 09:50:33,753 - src.data.collector - INFO - Stats after 730s - Klines: 515, Trades: 1901, OrderBook: 7436
+2024-11-22 09:50:33,803 - src.data.collector - INFO - Stats after 730s - Klines: 515, Trades: 1902, OrderBook: 7436
+2024-11-22 09:50:33,842 - src.data.collector - INFO - Stats after 730s - Klines: 515, Trades: 1903, OrderBook: 7436
+2024-11-22 09:50:33,877 - src.data.collector - INFO - Stats after 730s - Klines: 516, Trades: 1903, OrderBook: 7436
+2024-11-22 09:50:33,916 - src.data.collector - INFO - Stats after 730s - Klines: 517, Trades: 1903, OrderBook: 7436
+2024-11-22 09:50:33,988 - src.data.collector - INFO - Stats after 730s - Klines: 517, Trades: 1904, OrderBook: 7436
+2024-11-22 09:50:34,027 - src.data.collector - INFO - Stats after 730s - Klines: 517, Trades: 1905, OrderBook: 7436
+2024-11-22 09:50:34,063 - src.data.collector - INFO - Stats after 730s - Klines: 517, Trades: 1906, OrderBook: 7436
+2024-11-22 09:50:34,103 - src.data.collector - INFO - Stats after 730s - Klines: 517, Trades: 1907, OrderBook: 7436
+2024-11-22 09:50:34,142 - src.data.collector - INFO - Stats after 730s - Klines: 518, Trades: 1907, OrderBook: 7436
+2024-11-22 09:50:34,182 - src.data.collector - INFO - Stats after 730s - Klines: 518, Trades: 1908, OrderBook: 7436
+2024-11-22 09:50:34,250 - src.data.collector - INFO - Stats after 730s - Klines: 518, Trades: 1908, OrderBook: 7438
+2024-11-22 09:50:34,397 - src.data.collector - INFO - Stats after 730s - Klines: 518, Trades: 1908, OrderBook: 7442
+2024-11-22 09:50:34,480 - src.data.collector - INFO - Stats after 730s - Klines: 518, Trades: 1908, OrderBook: 7444
+2024-11-22 09:50:43,717 - src.data.collector - INFO - Stats after 740s - Klines: 525, Trades: 1929, OrderBook: 7478
+2024-11-22 09:50:44,025 - src.data.collector - INFO - Stats after 740s - Klines: 525, Trades: 1930, OrderBook: 7478
+2024-11-22 09:50:44,230 - src.data.collector - INFO - Stats after 740s - Klines: 525, Trades: 1931, OrderBook: 7478
+2024-11-22 09:50:53,548 - src.data.collector - INFO - Stats after 750s - Klines: 529, Trades: 1944, OrderBook: 7528
+2024-11-22 09:50:53,650 - src.data.collector - INFO - Stats after 750s - Klines: 529, Trades: 1945, OrderBook: 7528
+2024-11-22 09:50:53,751 - src.data.collector - INFO - Stats after 750s - Klines: 529, Trades: 1946, OrderBook: 7528
+2024-11-22 09:50:53,852 - src.data.collector - INFO - Stats after 750s - Klines: 529, Trades: 1947, OrderBook: 7528
+2024-11-22 09:50:54,060 - src.data.collector - INFO - Stats after 750s - Klines: 529, Trades: 1948, OrderBook: 7528
+2024-11-22 09:50:54,162 - src.data.collector - INFO - Stats after 750s - Klines: 529, Trades: 1949, OrderBook: 7528
+2024-11-22 09:50:54,262 - src.data.collector - INFO - Stats after 750s - Klines: 529, Trades: 1950, OrderBook: 7528
+2024-11-22 09:50:54,363 - src.data.collector - INFO - Stats after 750s - Klines: 529, Trades: 1951, OrderBook: 7528
+2024-11-22 09:50:54,498 - src.data.collector - INFO - Stats after 750s - Klines: 530, Trades: 1951, OrderBook: 7528
+2024-11-22 09:51:03,582 - src.data.collector - INFO - Stats after 760s - Klines: 535, Trades: 1963, OrderBook: 7579
+2024-11-22 09:51:04,168 - src.data.collector - INFO - Stats after 760s - Klines: 535, Trades: 1964, OrderBook: 7579
+2024-11-22 09:51:04,207 - src.data.collector - INFO - Stats after 760s - Klines: 535, Trades: 1965, OrderBook: 7579
+2024-11-22 09:51:04,401 - src.data.collector - INFO - Stats after 760s - Klines: 535, Trades: 1966, OrderBook: 7579
+2024-11-22 09:51:04,505 - src.data.collector - INFO - Stats after 760s - Klines: 535, Trades: 1967, OrderBook: 7579
+2024-11-22 09:51:13,619 - src.data.collector - INFO - Stats after 770s - Klines: 545, Trades: 2024, OrderBook: 7579
+2024-11-22 09:51:13,721 - src.data.collector - INFO - Stats after 770s - Klines: 545, Trades: 2025, OrderBook: 7579
+2024-11-22 09:51:13,824 - src.data.collector - INFO - Stats after 770s - Klines: 545, Trades: 2026, OrderBook: 7579
+2024-11-22 09:51:13,925 - src.data.collector - INFO - Stats after 770s - Klines: 545, Trades: 2026, OrderBook: 7580
+2024-11-22 09:51:23,552 - src.data.collector - INFO - Stats after 780s - Klines: 545, Trades: 2026, OrderBook: 7645
+2024-11-22 09:51:23,654 - src.data.collector - INFO - Stats after 780s - Klines: 545, Trades: 2026, OrderBook: 7646
+2024-11-22 09:51:24,268 - src.data.collector - INFO - Stats after 780s - Klines: 545, Trades: 2026, OrderBook: 7651
+2024-11-22 09:51:33,581 - src.data.collector - INFO - Stats after 790s - Klines: 560, Trades: 2063, OrderBook: 7685
+2024-11-22 09:51:33,714 - src.data.collector - INFO - Stats after 790s - Klines: 560, Trades: 2063, OrderBook: 7689
+2024-11-22 09:51:33,784 - src.data.collector - INFO - Stats after 790s - Klines: 560, Trades: 2063, OrderBook: 7691
+2024-11-22 09:51:33,913 - src.data.collector - INFO - Stats after 790s - Klines: 560, Trades: 2063, OrderBook: 7695
+2024-11-22 09:51:33,983 - src.data.collector - INFO - Stats after 790s - Klines: 560, Trades: 2063, OrderBook: 7697
+2024-11-22 09:51:34,079 - src.data.collector - INFO - Stats after 790s - Klines: 560, Trades: 2063, OrderBook: 7700
+2024-11-22 09:51:43,525 - src.data.collector - INFO - Stats after 800s - Klines: 572, Trades: 2105, OrderBook: 7948
+2024-11-22 09:51:43,598 - src.data.collector - INFO - Stats after 800s - Klines: 572, Trades: 2105, OrderBook: 7950
+2024-11-22 09:51:43,663 - src.data.collector - INFO - Stats after 800s - Klines: 573, Trades: 2105, OrderBook: 7950
+2024-11-22 09:51:44,352 - src.data.collector - INFO - Stats after 800s - Klines: 573, Trades: 2105, OrderBook: 7959
+2024-11-22 09:51:44,455 - src.data.collector - INFO - Stats after 800s - Klines: 573, Trades: 2105, OrderBook: 7962
+2024-11-22 09:52:23,764 - src.data.collector - INFO - Stats after 840s - Klines: 580, Trades: 2130, OrderBook: 8192
+2024-11-22 09:52:33,697 - src.data.collector - INFO - Stats after 850s - Klines: 589, Trades: 2150, OrderBook: 8233
+2024-11-22 09:52:34,158 - src.data.collector - INFO - Stats after 850s - Klines: 590, Trades: 2150, OrderBook: 8233
+2024-11-22 09:52:34,213 - src.data.collector - INFO - Stats after 850s - Klines: 591, Trades: 2150, OrderBook: 8233
+2024-11-22 09:52:34,311 - src.data.collector - INFO - Stats after 850s - Klines: 592, Trades: 2150, OrderBook: 8233
+2024-11-22 09:52:34,414 - src.data.collector - INFO - Stats after 850s - Klines: 593, Trades: 2150, OrderBook: 8233
+2024-11-22 09:52:53,665 - src.data.collector - INFO - Stats after 870s - Klines: 597, Trades: 2181, OrderBook: 8335
+2024-11-22 09:53:03,901 - src.data.collector - INFO - Stats after 880s - Klines: 597, Trades: 2181, OrderBook: 8399
+2024-11-22 09:53:13,977 - src.data.collector - INFO - Stats after 890s - Klines: 605, Trades: 2181, OrderBook: 8465
+2024-11-22 09:53:14,253 - src.data.collector - INFO - Stats after 890s - Klines: 605, Trades: 2181, OrderBook: 8466
+2024-11-22 09:53:23,778 - src.data.collector - INFO - Stats after 900s - Klines: 612, Trades: 2219, OrderBook: 8559
+2024-11-22 09:53:23,874 - src.data.collector - INFO - Stats after 900s - Klines: 613, Trades: 2219, OrderBook: 8559
+2024-11-22 09:53:23,987 - src.data.collector - INFO - Stats after 900s - Klines: 614, Trades: 2219, OrderBook: 8559
+2024-11-22 09:53:24,084 - src.data.collector - INFO - Stats after 900s - Klines: 615, Trades: 2219, OrderBook: 8559
+2024-11-22 09:53:24,284 - src.data.collector - INFO - Stats after 900s - Klines: 616, Trades: 2219, OrderBook: 8559
+2024-11-22 09:53:33,606 - src.data.collector - INFO - Stats after 910s - Klines: 623, Trades: 2269, OrderBook: 8559
+2024-11-22 09:53:33,705 - src.data.collector - INFO - Stats after 910s - Klines: 623, Trades: 2270, OrderBook: 8559
+2024-11-22 09:53:33,787 - src.data.collector - INFO - Stats after 910s - Klines: 623, Trades: 2271, OrderBook: 8559
+2024-11-22 09:53:34,117 - src.data.collector - INFO - Stats after 910s - Klines: 623, Trades: 2272, OrderBook: 8559
+2024-11-22 09:53:43,945 - src.data.collector - INFO - Stats after 920s - Klines: 623, Trades: 2272, OrderBook: 8623
+2024-11-22 09:53:44,457 - src.data.collector - INFO - Stats after 920s - Klines: 623, Trades: 2272, OrderBook: 8627
+2024-11-22 09:53:54,390 - src.data.collector - INFO - Stats after 930s - Klines: 623, Trades: 2272, OrderBook: 8694
+2024-11-22 09:54:03,589 - src.data.collector - INFO - Stats after 940s - Klines: 640, Trades: 2359, OrderBook: 8807
+2024-11-22 09:54:03,659 - src.data.collector - INFO - Stats after 940s - Klines: 640, Trades: 2359, OrderBook: 8809
+2024-11-22 09:54:03,860 - src.data.collector - INFO - Stats after 940s - Klines: 640, Trades: 2359, OrderBook: 8815
+2024-11-22 09:54:04,068 - src.data.collector - INFO - Stats after 940s - Klines: 640, Trades: 2359, OrderBook: 8821
+2024-11-22 09:54:04,277 - src.data.collector - INFO - Stats after 940s - Klines: 640, Trades: 2359, OrderBook: 8827
+2024-11-22 09:54:04,439 - src.data.collector - INFO - Stats after 940s - Klines: 640, Trades: 2359, OrderBook: 8832
+2024-11-22 09:54:04,488 - src.data.collector - INFO - Stats after 940s - Klines: 640, Trades: 2359, OrderBook: 8833
+2024-11-22 09:54:13,611 - src.data.collector - INFO - Stats after 950s - Klines: 654, Trades: 2461, OrderBook: 8991
+2024-11-22 09:54:13,653 - src.data.collector - INFO - Stats after 950s - Klines: 654, Trades: 2461, OrderBook: 8992
+2024-11-22 09:54:13,766 - src.data.collector - INFO - Stats after 950s - Klines: 654, Trades: 2461, OrderBook: 8995
+2024-11-22 09:54:13,929 - src.data.collector - INFO - Stats after 950s - Klines: 654, Trades: 2461, OrderBook: 9000
+2024-11-22 09:54:13,982 - src.data.collector - INFO - Stats after 950s - Klines: 654, Trades: 2461, OrderBook: 9001
+2024-11-22 09:54:14,084 - src.data.collector - INFO - Stats after 950s - Klines: 654, Trades: 2461, OrderBook: 9004
+2024-11-22 09:54:14,128 - src.data.collector - INFO - Stats after 950s - Klines: 654, Trades: 2461, OrderBook: 9005
+2024-11-22 09:54:14,324 - src.data.collector - INFO - Stats after 950s - Klines: 654, Trades: 2461, OrderBook: 9011
+2024-11-22 09:54:14,478 - src.data.collector - INFO - Stats after 950s - Klines: 654, Trades: 2461, OrderBook: 9016
+2024-11-22 09:54:23,548 - src.data.collector - INFO - Stats after 960s - Klines: 660, Trades: 2469, OrderBook: 9282
+2024-11-22 09:54:23,589 - src.data.collector - INFO - Stats after 960s - Klines: 661, Trades: 2469, OrderBook: 9282
+2024-11-22 09:54:23,634 - src.data.collector - INFO - Stats after 960s - Klines: 662, Trades: 2469, OrderBook: 9282
+2024-11-22 09:54:23,676 - src.data.collector - INFO - Stats after 960s - Klines: 663, Trades: 2469, OrderBook: 9282
+2024-11-22 09:54:23,715 - src.data.collector - INFO - Stats after 960s - Klines: 664, Trades: 2469, OrderBook: 9282
+2024-11-22 09:54:23,764 - src.data.collector - INFO - Stats after 960s - Klines: 665, Trades: 2469, OrderBook: 9282
+2024-11-22 09:54:23,816 - src.data.collector - INFO - Stats after 960s - Klines: 666, Trades: 2469, OrderBook: 9282
+2024-11-22 09:54:23,859 - src.data.collector - INFO - Stats after 960s - Klines: 667, Trades: 2469, OrderBook: 9282
+2024-11-22 09:54:23,898 - src.data.collector - INFO - Stats after 960s - Klines: 668, Trades: 2469, OrderBook: 9282
+2024-11-22 09:54:23,937 - src.data.collector - INFO - Stats after 960s - Klines: 669, Trades: 2469, OrderBook: 9282
+2024-11-22 09:54:23,984 - src.data.collector - INFO - Stats after 960s - Klines: 670, Trades: 2469, OrderBook: 9282
+2024-11-22 09:54:24,024 - src.data.collector - INFO - Stats after 960s - Klines: 671, Trades: 2469, OrderBook: 9282
+2024-11-22 09:54:33,814 - src.data.collector - INFO - Stats after 970s - Klines: 680, Trades: 2531, OrderBook: 9511
+2024-11-22 09:54:33,973 - src.data.collector - INFO - Stats after 970s - Klines: 680, Trades: 2531, OrderBook: 9516
+2024-11-22 09:54:34,020 - src.data.collector - INFO - Stats after 970s - Klines: 681, Trades: 2531, OrderBook: 9516
+2024-11-22 09:54:34,063 - src.data.collector - INFO - Stats after 970s - Klines: 681, Trades: 2532, OrderBook: 9516
+2024-11-22 09:54:34,099 - src.data.collector - INFO - Stats after 970s - Klines: 681, Trades: 2533, OrderBook: 9516
+2024-11-22 09:54:34,135 - src.data.collector - INFO - Stats after 970s - Klines: 681, Trades: 2534, OrderBook: 9516
+2024-11-22 09:54:34,218 - src.data.collector - INFO - Stats after 970s - Klines: 681, Trades: 2535, OrderBook: 9516
+2024-11-22 09:54:34,259 - src.data.collector - INFO - Stats after 970s - Klines: 681, Trades: 2536, OrderBook: 9516
+2024-11-22 09:54:34,446 - src.data.collector - INFO - Stats after 970s - Klines: 681, Trades: 2536, OrderBook: 9521
+2024-11-22 09:54:43,646 - src.data.collector - INFO - Stats after 980s - Klines: 686, Trades: 2557, OrderBook: 9580
+2024-11-22 09:54:54,297 - src.data.collector - INFO - Stats after 990s - Klines: 689, Trades: 2567, OrderBook: 9648
+2024-11-22 09:55:03,921 - src.data.collector - INFO - Stats after 1000s - Klines: 693, Trades: 2582, OrderBook: 9696
+2024-11-22 09:55:04,022 - src.data.collector - INFO - Stats after 1000s - Klines: 693, Trades: 2583, OrderBook: 9696
+2024-11-22 09:55:04,126 - src.data.collector - INFO - Stats after 1000s - Klines: 693, Trades: 2584, OrderBook: 9696
+2024-11-22 09:55:04,331 - src.data.collector - INFO - Stats after 1000s - Klines: 693, Trades: 2585, OrderBook: 9696
+2024-11-22 09:55:04,433 - src.data.collector - INFO - Stats after 1000s - Klines: 693, Trades: 2586, OrderBook: 9696
+2024-11-22 09:55:13,545 - src.data.collector - INFO - Stats after 1010s - Klines: 702, Trades: 2616, OrderBook: 9710
+2024-11-22 09:55:13,752 - src.data.collector - INFO - Stats after 1010s - Klines: 702, Trades: 2617, OrderBook: 9710
+2024-11-22 09:55:13,855 - src.data.collector - INFO - Stats after 1010s - Klines: 702, Trades: 2618, OrderBook: 9710
+2024-11-22 09:55:13,964 - src.data.collector - INFO - Stats after 1010s - Klines: 702, Trades: 2619, OrderBook: 9710
+2024-11-22 09:55:14,056 - src.data.collector - INFO - Stats after 1010s - Klines: 702, Trades: 2620, OrderBook: 9710
+2024-11-22 09:55:14,161 - src.data.collector - INFO - Stats after 1010s - Klines: 702, Trades: 2621, OrderBook: 9710
+2024-11-22 09:55:14,264 - src.data.collector - INFO - Stats after 1010s - Klines: 702, Trades: 2622, OrderBook: 9710
+2024-11-22 09:55:14,341 - src.data.collector - INFO - Stats after 1010s - Klines: 702, Trades: 2623, OrderBook: 9710
+2024-11-22 09:55:14,376 - src.data.collector - INFO - Stats after 1010s - Klines: 702, Trades: 2624, OrderBook: 9710
+2024-11-22 09:55:14,416 - src.data.collector - INFO - Stats after 1010s - Klines: 702, Trades: 2625, OrderBook: 9710
+2024-11-22 09:55:14,460 - src.data.collector - INFO - Stats after 1010s - Klines: 702, Trades: 2626, OrderBook: 9710
+2024-11-22 09:55:14,509 - src.data.collector - INFO - Stats after 1010s - Klines: 702, Trades: 2627, OrderBook: 9710
+2024-11-22 09:55:23,534 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2674, OrderBook: 9926
+2024-11-22 09:55:23,574 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2675, OrderBook: 9926
+2024-11-22 09:55:23,619 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2676, OrderBook: 9926
+2024-11-22 09:55:23,666 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2677, OrderBook: 9926
+2024-11-22 09:55:23,705 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2678, OrderBook: 9926
+2024-11-22 09:55:23,746 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2679, OrderBook: 9926
+2024-11-22 09:55:23,791 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2680, OrderBook: 9926
+2024-11-22 09:55:23,832 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2681, OrderBook: 9926
+2024-11-22 09:55:23,872 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2682, OrderBook: 9926
+2024-11-22 09:55:23,911 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2683, OrderBook: 9926
+2024-11-22 09:55:23,950 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2684, OrderBook: 9926
+2024-11-22 09:55:23,999 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2685, OrderBook: 9926
+2024-11-22 09:55:24,038 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2686, OrderBook: 9926
+2024-11-22 09:55:24,079 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2687, OrderBook: 9926
+2024-11-22 09:55:24,119 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2688, OrderBook: 9926
+2024-11-22 09:55:24,158 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2689, OrderBook: 9926
+2024-11-22 09:55:24,200 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2690, OrderBook: 9926
+2024-11-22 09:55:24,240 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2691, OrderBook: 9926
+2024-11-22 09:55:24,279 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2692, OrderBook: 9926
+2024-11-22 09:55:24,318 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2693, OrderBook: 9926
+2024-11-22 09:55:24,357 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2694, OrderBook: 9926
+2024-11-22 09:55:24,401 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2695, OrderBook: 9926
+2024-11-22 09:55:24,440 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2696, OrderBook: 9926
+2024-11-22 09:55:24,481 - src.data.collector - INFO - Stats after 1020s - Klines: 711, Trades: 2697, OrderBook: 9926
+2024-11-22 09:55:33,515 - src.data.collector - INFO - Stats after 1030s - Klines: 720, Trades: 2721, OrderBook: 9974
+2024-11-22 09:55:33,720 - src.data.collector - INFO - Stats after 1030s - Klines: 720, Trades: 2722, OrderBook: 9974
+2024-11-22 09:55:33,822 - src.data.collector - INFO - Stats after 1030s - Klines: 720, Trades: 2723, OrderBook: 9974
+2024-11-22 09:55:34,027 - src.data.collector - INFO - Stats after 1030s - Klines: 720, Trades: 2724, OrderBook: 9974
+2024-11-22 09:55:34,232 - src.data.collector - INFO - Stats after 1030s - Klines: 721, Trades: 2724, OrderBook: 9974
+2024-11-22 09:55:34,333 - src.data.collector - INFO - Stats after 1030s - Klines: 722, Trades: 2724, OrderBook: 9974
+2024-11-22 09:55:34,437 - src.data.collector - INFO - Stats after 1030s - Klines: 722, Trades: 2724, OrderBook: 9975
+2024-11-22 09:55:44,267 - src.data.collector - INFO - Stats after 1040s - Klines: 724, Trades: 2729, OrderBook: 10034
+2024-11-22 09:55:44,368 - src.data.collector - INFO - Stats after 1040s - Klines: 724, Trades: 2729, OrderBook: 10035
+2024-11-22 09:55:54,445 - src.data.collector - INFO - Stats after 1050s - Klines: 729, Trades: 2743, OrderBook: 10086
+2024-11-22 09:56:14,476 - src.data.collector - INFO - Stats after 1070s - Klines: 734, Trades: 2756, OrderBook: 10214
+2024-11-22 09:56:33,570 - src.data.collector - INFO - Stats after 1090s - Klines: 749, Trades: 2783, OrderBook: 10390
+2024-11-22 09:56:33,760 - src.data.collector - INFO - Stats after 1090s - Klines: 749, Trades: 2783, OrderBook: 10396
+2024-11-22 09:56:34,034 - src.data.collector - INFO - Stats after 1090s - Klines: 749, Trades: 2783, OrderBook: 10405
+2024-11-22 09:56:34,254 - src.data.collector - INFO - Stats after 1090s - Klines: 749, Trades: 2783, OrderBook: 10412
+2024-11-22 09:56:34,351 - src.data.collector - INFO - Stats after 1090s - Klines: 749, Trades: 2783, OrderBook: 10415
+2024-11-22 09:56:43,695 - src.data.collector - INFO - Stats after 1100s - Klines: 771, Trades: 2842, OrderBook: 10636
+2024-11-22 09:56:43,762 - src.data.collector - INFO - Stats after 1100s - Klines: 771, Trades: 2842, OrderBook: 10638
+2024-11-22 09:56:43,916 - src.data.collector - INFO - Stats after 1100s - Klines: 771, Trades: 2842, OrderBook: 10643
+2024-11-22 09:56:44,386 - src.data.collector - INFO - Stats after 1100s - Klines: 771, Trades: 2842, OrderBook: 10659
+2024-11-22 09:56:44,492 - src.data.collector - INFO - Stats after 1100s - Klines: 771, Trades: 2842, OrderBook: 10662
+2024-11-22 09:56:53,577 - src.data.collector - INFO - Stats after 1110s - Klines: 777, Trades: 2897, OrderBook: 10883
+2024-11-22 09:56:53,817 - src.data.collector - INFO - Stats after 1110s - Klines: 777, Trades: 2897, OrderBook: 10890
+2024-11-22 09:56:54,181 - src.data.collector - INFO - Stats after 1110s - Klines: 777, Trades: 2897, OrderBook: 10902
+2024-11-22 09:56:54,220 - src.data.collector - INFO - Stats after 1110s - Klines: 777, Trades: 2897, OrderBook: 10903
+2024-11-22 09:56:54,345 - src.data.collector - INFO - Stats after 1110s - Klines: 777, Trades: 2897, OrderBook: 10907
+2024-11-22 09:56:54,413 - src.data.collector - INFO - Stats after 1110s - Klines: 777, Trades: 2897, OrderBook: 10909
+2024-11-22 09:56:54,454 - src.data.collector - INFO - Stats after 1110s - Klines: 777, Trades: 2897, OrderBook: 10910
+2024-11-22 09:57:03,526 - src.data.collector - INFO - Stats after 1120s - Klines: 789, Trades: 2949, OrderBook: 11072
+2024-11-22 09:57:03,566 - src.data.collector - INFO - Stats after 1120s - Klines: 789, Trades: 2950, OrderBook: 11072
+2024-11-22 09:57:03,648 - src.data.collector - INFO - Stats after 1120s - Klines: 789, Trades: 2951, OrderBook: 11072
+2024-11-22 09:57:03,690 - src.data.collector - INFO - Stats after 1120s - Klines: 789, Trades: 2952, OrderBook: 11072
+2024-11-22 09:57:03,731 - src.data.collector - INFO - Stats after 1120s - Klines: 789, Trades: 2953, OrderBook: 11072
+2024-11-22 09:57:04,352 - src.data.collector - INFO - Stats after 1120s - Klines: 789, Trades: 2953, OrderBook: 11081
+2024-11-22 09:57:13,968 - src.data.collector - INFO - Stats after 1130s - Klines: 793, Trades: 2971, OrderBook: 11151
+2024-11-22 09:57:14,279 - src.data.collector - INFO - Stats after 1130s - Klines: 794, Trades: 2971, OrderBook: 11151
+2024-11-22 09:57:23,555 - src.data.collector - INFO - Stats after 1140s - Klines: 795, Trades: 2978, OrderBook: 11215
+2024-11-22 09:57:23,700 - src.data.collector - INFO - Stats after 1140s - Klines: 795, Trades: 2979, OrderBook: 11215
+2024-11-22 09:57:23,802 - src.data.collector - INFO - Stats after 1140s - Klines: 795, Trades: 2980, OrderBook: 11215
+2024-11-22 09:57:24,273 - src.data.collector - INFO - Stats after 1140s - Klines: 795, Trades: 2981, OrderBook: 11215
+2024-11-22 09:57:24,315 - src.data.collector - INFO - Stats after 1140s - Klines: 795, Trades: 2982, OrderBook: 11215
+2024-11-22 09:57:24,471 - src.data.collector - INFO - Stats after 1140s - Klines: 795, Trades: 2983, OrderBook: 11215
+2024-11-22 09:57:34,248 - src.data.collector - INFO - Stats after 1150s - Klines: 797, Trades: 3003, OrderBook: 11264
+2024-11-22 09:57:43,624 - src.data.collector - INFO - Stats after 1160s - Klines: 806, Trades: 3057, OrderBook: 11493
+2024-11-22 09:57:43,848 - src.data.collector - INFO - Stats after 1160s - Klines: 806, Trades: 3057, OrderBook: 11500
+2024-11-22 09:57:44,211 - src.data.collector - INFO - Stats after 1160s - Klines: 806, Trades: 3057, OrderBook: 11512
+2024-11-22 09:57:44,431 - src.data.collector - INFO - Stats after 1160s - Klines: 806, Trades: 3057, OrderBook: 11519
+2024-11-22 09:57:54,047 - src.data.collector - INFO - Stats after 1170s - Klines: 822, Trades: 3097, OrderBook: 11730
+2024-11-22 09:57:54,087 - src.data.collector - INFO - Stats after 1170s - Klines: 822, Trades: 3098, OrderBook: 11730
+2024-11-22 09:57:54,140 - src.data.collector - INFO - Stats after 1170s - Klines: 823, Trades: 3098, OrderBook: 11730
+2024-11-22 09:57:54,197 - src.data.collector - INFO - Stats after 1170s - Klines: 823, Trades: 3099, OrderBook: 11730
+2024-11-22 09:57:54,459 - src.data.collector - INFO - Stats after 1170s - Klines: 823, Trades: 3099, OrderBook: 11738
+2024-11-22 09:57:54,500 - src.data.collector - INFO - Stats after 1170s - Klines: 823, Trades: 3100, OrderBook: 11738
+2024-11-22 09:58:13,570 - src.data.collector - INFO - Stats after 1190s - Klines: 835, Trades: 3132, OrderBook: 11839
+2024-11-22 09:58:13,773 - src.data.collector - INFO - Stats after 1190s - Klines: 835, Trades: 3133, OrderBook: 11839
+2024-11-22 09:58:13,877 - src.data.collector - INFO - Stats after 1190s - Klines: 835, Trades: 3134, OrderBook: 11839
+2024-11-22 09:58:14,082 - src.data.collector - INFO - Stats after 1190s - Klines: 835, Trades: 3135, OrderBook: 11839
+2024-11-22 09:58:14,184 - src.data.collector - INFO - Stats after 1190s - Klines: 835, Trades: 3136, OrderBook: 11839
+2024-11-22 09:58:24,015 - src.data.collector - INFO - Stats after 1200s - Klines: 835, Trades: 3150, OrderBook: 11893
+2024-11-22 09:58:33,538 - src.data.collector - INFO - Stats after 1210s - Klines: 843, Trades: 3176, OrderBook: 11919
+2024-11-22 09:58:33,619 - src.data.collector - INFO - Stats after 1210s - Klines: 843, Trades: 3177, OrderBook: 11919
+2024-11-22 09:58:43,778 - src.data.collector - INFO - Stats after 1220s - Klines: 843, Trades: 3177, OrderBook: 11994
+2024-11-22 09:58:44,214 - src.data.collector - INFO - Stats after 1220s - Klines: 843, Trades: 3177, OrderBook: 11996
+2024-11-22 09:58:53,593 - src.data.collector - INFO - Stats after 1230s - Klines: 843, Trades: 3205, OrderBook: 12256
+2024-11-22 09:58:53,747 - src.data.collector - INFO - Stats after 1230s - Klines: 843, Trades: 3205, OrderBook: 12261
+2024-11-22 09:58:53,903 - src.data.collector - INFO - Stats after 1230s - Klines: 843, Trades: 3205, OrderBook: 12266
+2024-11-22 09:58:53,937 - src.data.collector - INFO - Stats after 1230s - Klines: 843, Trades: 3205, OrderBook: 12267
+2024-11-22 09:58:54,182 - src.data.collector - INFO - Stats after 1230s - Klines: 843, Trades: 3205, OrderBook: 12275
+2024-11-22 09:58:54,281 - src.data.collector - INFO - Stats after 1230s - Klines: 843, Trades: 3205, OrderBook: 12278
+2024-11-22 09:58:54,349 - src.data.collector - INFO - Stats after 1230s - Klines: 843, Trades: 3205, OrderBook: 12280
+2024-11-22 09:58:54,486 - src.data.collector - INFO - Stats after 1230s - Klines: 843, Trades: 3205, OrderBook: 12284
+2024-11-22 09:59:03,697 - src.data.collector - INFO - Stats after 1240s - Klines: 863, Trades: 3241, OrderBook: 12516
+2024-11-22 09:59:03,735 - src.data.collector - INFO - Stats after 1240s - Klines: 863, Trades: 3242, OrderBook: 12516
+2024-11-22 09:59:03,776 - src.data.collector - INFO - Stats after 1240s - Klines: 863, Trades: 3243, OrderBook: 12516
+2024-11-22 09:59:03,816 - src.data.collector - INFO - Stats after 1240s - Klines: 863, Trades: 3244, OrderBook: 12516
+2024-11-22 09:59:03,857 - src.data.collector - INFO - Stats after 1240s - Klines: 863, Trades: 3245, OrderBook: 12516
+2024-11-22 09:59:03,887 - src.data.collector - INFO - Stats after 1240s - Klines: 863, Trades: 3246, OrderBook: 12516
+2024-11-22 09:59:03,928 - src.data.collector - INFO - Stats after 1240s - Klines: 863, Trades: 3247, OrderBook: 12516
+2024-11-22 09:59:03,967 - src.data.collector - INFO - Stats after 1240s - Klines: 863, Trades: 3248, OrderBook: 12516
+2024-11-22 09:59:04,006 - src.data.collector - INFO - Stats after 1240s - Klines: 863, Trades: 3249, OrderBook: 12516
+2024-11-22 09:59:04,046 - src.data.collector - INFO - Stats after 1240s - Klines: 863, Trades: 3250, OrderBook: 12516
+2024-11-22 09:59:04,092 - src.data.collector - INFO - Stats after 1240s - Klines: 863, Trades: 3251, OrderBook: 12516
+2024-11-22 09:59:04,132 - src.data.collector - INFO - Stats after 1240s - Klines: 863, Trades: 3252, OrderBook: 12516
+2024-11-22 09:59:04,172 - src.data.collector - INFO - Stats after 1240s - Klines: 863, Trades: 3253, OrderBook: 12516
+2024-11-22 09:59:04,206 - src.data.collector - INFO - Stats after 1240s - Klines: 863, Trades: 3254, OrderBook: 12516
+2024-11-22 09:59:04,258 - src.data.collector - INFO - Stats after 1240s - Klines: 863, Trades: 3255, OrderBook: 12516
+2024-11-22 09:59:14,328 - src.data.collector - INFO - Stats after 1250s - Klines: 870, Trades: 3265, OrderBook: 12704
+2024-11-22 09:59:14,397 - src.data.collector - INFO - Stats after 1250s - Klines: 870, Trades: 3266, OrderBook: 12704
+2024-11-22 09:59:23,726 - src.data.collector - INFO - Stats after 1260s - Klines: 877, Trades: 3288, OrderBook: 12831
+2024-11-22 09:59:23,772 - src.data.collector - INFO - Stats after 1260s - Klines: 877, Trades: 3289, OrderBook: 12831
+2024-11-22 09:59:23,811 - src.data.collector - INFO - Stats after 1260s - Klines: 878, Trades: 3289, OrderBook: 12831
+2024-11-22 09:59:24,246 - src.data.collector - INFO - Stats after 1260s - Klines: 878, Trades: 3289, OrderBook: 12836
+2024-11-22 09:59:33,643 - src.data.collector - INFO - Stats after 1270s - Klines: 883, Trades: 3315, OrderBook: 12940
+2024-11-22 09:59:33,684 - src.data.collector - INFO - Stats after 1270s - Klines: 884, Trades: 3315, OrderBook: 12940
+2024-11-22 09:59:34,106 - src.data.collector - INFO - Stats after 1270s - Klines: 884, Trades: 3315, OrderBook: 12941
+2024-11-22 09:59:34,287 - src.data.collector - INFO - Stats after 1270s - Klines: 884, Trades: 3316, OrderBook: 12941
+2024-11-22 09:59:43,741 - src.data.collector - INFO - Stats after 1280s - Klines: 888, Trades: 3335, OrderBook: 13095
+2024-11-22 09:59:43,833 - src.data.collector - INFO - Stats after 1280s - Klines: 888, Trades: 3336, OrderBook: 13095
+2024-11-22 09:59:43,872 - src.data.collector - INFO - Stats after 1280s - Klines: 889, Trades: 3336, OrderBook: 13095
+2024-11-22 09:59:43,980 - src.data.collector - INFO - Stats after 1280s - Klines: 889, Trades: 3337, OrderBook: 13095
+2024-11-22 09:59:44,014 - src.data.collector - INFO - Stats after 1280s - Klines: 889, Trades: 3338, OrderBook: 13095
+2024-11-22 09:59:44,094 - src.data.collector - INFO - Stats after 1280s - Klines: 889, Trades: 3339, OrderBook: 13095
+2024-11-22 09:59:44,144 - src.data.collector - INFO - Stats after 1280s - Klines: 889, Trades: 3340, OrderBook: 13095
+2024-11-22 09:59:44,298 - src.data.collector - INFO - Stats after 1280s - Klines: 889, Trades: 3341, OrderBook: 13095
+2024-11-22 09:59:44,332 - src.data.collector - INFO - Stats after 1280s - Klines: 889, Trades: 3342, OrderBook: 13095
+2024-11-22 09:59:44,371 - src.data.collector - INFO - Stats after 1280s - Klines: 889, Trades: 3343, OrderBook: 13095
+2024-11-22 09:59:44,411 - src.data.collector - INFO - Stats after 1280s - Klines: 889, Trades: 3344, OrderBook: 13095
+2024-11-22 09:59:53,923 - src.data.collector - INFO - Stats after 1290s - Klines: 894, Trades: 3354, OrderBook: 13162
+2024-11-22 10:00:03,521 - src.data.collector - INFO - Stats after 1300s - Klines: 901, Trades: 3377, OrderBook: 13315
+2024-11-22 10:00:14,506 - src.data.collector - INFO - Stats after 1310s - Klines: 907, Trades: 3403, OrderBook: 13383
+2024-11-22 10:00:23,522 - src.data.collector - INFO - Stats after 1320s - Klines: 912, Trades: 3417, OrderBook: 13553
+2024-11-22 10:00:23,694 - src.data.collector - INFO - Stats after 1320s - Klines: 912, Trades: 3417, OrderBook: 13559
+2024-11-22 10:00:24,358 - src.data.collector - INFO - Stats after 1320s - Klines: 912, Trades: 3417, OrderBook: 13568
+2024-11-22 10:00:33,543 - src.data.collector - INFO - Stats after 1330s - Klines: 919, Trades: 3441, OrderBook: 13680
+2024-11-22 10:00:43,686 - src.data.collector - INFO - Stats after 1340s - Klines: 927, Trades: 3480, OrderBook: 13825
+2024-11-22 10:00:44,340 - src.data.collector - INFO - Stats after 1340s - Klines: 927, Trades: 3481, OrderBook: 13825
+2024-11-22 10:00:44,379 - src.data.collector - INFO - Stats after 1340s - Klines: 927, Trades: 3482, OrderBook: 13825
+2024-11-22 10:00:53,522 - src.data.collector - INFO - Stats after 1350s - Klines: 931, Trades: 3501, OrderBook: 13874
+2024-11-22 10:00:53,571 - src.data.collector - INFO - Stats after 1350s - Klines: 931, Trades: 3502, OrderBook: 13874
+2024-11-22 10:00:53,624 - src.data.collector - INFO - Stats after 1350s - Klines: 931, Trades: 3503, OrderBook: 13874
+2024-11-22 10:00:53,848 - src.data.collector - INFO - Stats after 1350s - Klines: 931, Trades: 3504, OrderBook: 13874
+2024-11-22 10:00:53,916 - src.data.collector - INFO - Stats after 1350s - Klines: 931, Trades: 3505, OrderBook: 13874
+2024-11-22 10:00:54,053 - src.data.collector - INFO - Stats after 1350s - Klines: 931, Trades: 3506, OrderBook: 13874
+2024-11-22 10:00:54,208 - src.data.collector - INFO - Stats after 1350s - Klines: 931, Trades: 3507, OrderBook: 13874
+2024-11-22 10:01:03,702 - src.data.collector - INFO - Stats after 1360s - Klines: 941, Trades: 3532, OrderBook: 14019
+2024-11-22 10:01:03,741 - src.data.collector - INFO - Stats after 1360s - Klines: 942, Trades: 3532, OrderBook: 14019
+2024-11-22 10:01:03,780 - src.data.collector - INFO - Stats after 1360s - Klines: 943, Trades: 3532, OrderBook: 14019
+2024-11-22 10:01:03,876 - src.data.collector - INFO - Stats after 1360s - Klines: 943, Trades: 3533, OrderBook: 14019
+2024-11-22 10:01:03,914 - src.data.collector - INFO - Stats after 1360s - Klines: 943, Trades: 3534, OrderBook: 14019
+2024-11-22 10:01:04,307 - src.data.collector - INFO - Stats after 1360s - Klines: 943, Trades: 3534, OrderBook: 14026
+2024-11-22 10:01:04,464 - src.data.collector - INFO - Stats after 1360s - Klines: 943, Trades: 3534, OrderBook: 14031
+2024-11-22 10:01:13,695 - src.data.collector - INFO - Stats after 1370s - Klines: 948, Trades: 3542, OrderBook: 14101
+2024-11-22 10:01:13,797 - src.data.collector - INFO - Stats after 1370s - Klines: 948, Trades: 3543, OrderBook: 14101
+2024-11-22 10:01:23,852 - src.data.collector - INFO - Stats after 1380s - Klines: 953, Trades: 3562, OrderBook: 14239
+2024-11-22 10:01:24,257 - src.data.collector - INFO - Stats after 1380s - Klines: 953, Trades: 3562, OrderBook: 14252
+2024-11-22 10:01:34,100 - src.data.collector - INFO - Stats after 1390s - Klines: 960, Trades: 3581, OrderBook: 14418
+2024-11-22 10:01:34,347 - src.data.collector - INFO - Stats after 1390s - Klines: 960, Trades: 3582, OrderBook: 14418
+2024-11-22 10:01:34,388 - src.data.collector - INFO - Stats after 1390s - Klines: 961, Trades: 3582, OrderBook: 14418
+2024-11-22 10:01:43,596 - src.data.collector - INFO - Stats after 1400s - Klines: 966, Trades: 3594, OrderBook: 14558
+2024-11-22 10:01:43,657 - src.data.collector - INFO - Stats after 1400s - Klines: 967, Trades: 3594, OrderBook: 14558
+2024-11-22 10:01:44,290 - src.data.collector - INFO - Stats after 1400s - Klines: 967, Trades: 3594, OrderBook: 14565
+2024-11-22 10:01:53,645 - src.data.collector - INFO - Stats after 1410s - Klines: 972, Trades: 3604, OrderBook: 14729
+2024-11-22 10:01:53,688 - src.data.collector - INFO - Stats after 1410s - Klines: 972, Trades: 3605, OrderBook: 14729
+2024-11-22 10:01:54,212 - src.data.collector - INFO - Stats after 1410s - Klines: 972, Trades: 3605, OrderBook: 14733
+2024-11-22 10:02:04,062 - src.data.collector - INFO - Stats after 1420s - Klines: 980, Trades: 3633, OrderBook: 14872
+2024-11-22 10:02:04,197 - src.data.collector - INFO - Stats after 1420s - Klines: 980, Trades: 3633, OrderBook: 14876
+2024-11-22 10:02:04,268 - src.data.collector - INFO - Stats after 1420s - Klines: 980, Trades: 3634, OrderBook: 14876
+2024-11-22 10:02:14,076 - src.data.collector - INFO - Stats after 1430s - Klines: 987, Trades: 3653, OrderBook: 14997
+2024-11-22 10:02:14,195 - src.data.collector - INFO - Stats after 1430s - Klines: 987, Trades: 3653, OrderBook: 15000
+2024-11-22 10:02:23,581 - src.data.collector - INFO - Stats after 1440s - Klines: 992, Trades: 3667, OrderBook: 15045
+2024-11-22 10:02:33,623 - src.data.collector - INFO - Stats after 1450s - Klines: 995, Trades: 3673, OrderBook: 15130
+2024-11-22 10:02:34,067 - src.data.collector - INFO - Stats after 1450s - Klines: 995, Trades: 3673, OrderBook: 15140
+2024-11-22 10:02:34,231 - src.data.collector - INFO - Stats after 1450s - Klines: 995, Trades: 3673, OrderBook: 15143
+2024-11-22 10:02:43,605 - src.data.collector - INFO - Stats after 1460s - Klines: 1001, Trades: 3691, OrderBook: 15312
+2024-11-22 10:02:43,684 - src.data.collector - INFO - Stats after 1460s - Klines: 1001, Trades: 3692, OrderBook: 15312
+2024-11-22 10:02:43,745 - src.data.collector - INFO - Stats after 1460s - Klines: 1002, Trades: 3692, OrderBook: 15312
+2024-11-22 10:02:43,799 - src.data.collector - INFO - Stats after 1460s - Klines: 1002, Trades: 3693, OrderBook: 15312
+2024-11-22 10:02:43,864 - src.data.collector - INFO - Stats after 1460s - Klines: 1002, Trades: 3694, OrderBook: 15312
+2024-11-22 10:02:43,936 - src.data.collector - INFO - Stats after 1460s - Klines: 1002, Trades: 3695, OrderBook: 15312
+2024-11-22 10:02:44,000 - src.data.collector - INFO - Stats after 1460s - Klines: 1002, Trades: 3696, OrderBook: 15312
+2024-11-22 10:02:44,156 - src.data.collector - INFO - Stats after 1460s - Klines: 1003, Trades: 3696, OrderBook: 15312
+2024-11-22 10:02:44,211 - src.data.collector - INFO - Stats after 1460s - Klines: 1003, Trades: 3697, OrderBook: 15312
+2024-11-22 10:02:44,269 - src.data.collector - INFO - Stats after 1460s - Klines: 1003, Trades: 3698, OrderBook: 15312
+2024-11-22 10:02:44,326 - src.data.collector - INFO - Stats after 1460s - Klines: 1003, Trades: 3699, OrderBook: 15312
+2024-11-22 10:02:44,384 - src.data.collector - INFO - Stats after 1460s - Klines: 1003, Trades: 3700, OrderBook: 15312
+2024-11-22 10:02:53,541 - src.data.collector - INFO - Stats after 1470s - Klines: 1008, Trades: 3720, OrderBook: 15368
+2024-11-22 10:02:53,640 - src.data.collector - INFO - Stats after 1470s - Klines: 1009, Trades: 3720, OrderBook: 15368
+2024-11-22 10:02:53,949 - src.data.collector - INFO - Stats after 1470s - Klines: 1009, Trades: 3720, OrderBook: 15373
+2024-11-22 10:02:54,353 - src.data.collector - INFO - Stats after 1470s - Klines: 1009, Trades: 3720, OrderBook: 15376
+2024-11-22 10:03:04,289 - src.data.collector - INFO - Stats after 1480s - Klines: 1013, Trades: 3734, OrderBook: 15453
+2024-11-22 10:03:13,534 - src.data.collector - INFO - Stats after 1490s - Klines: 1022, Trades: 3760, OrderBook: 15594
+2024-11-22 10:03:13,591 - src.data.collector - INFO - Stats after 1490s - Klines: 1022, Trades: 3761, OrderBook: 15594
+2024-11-22 10:03:13,649 - src.data.collector - INFO - Stats after 1490s - Klines: 1022, Trades: 3762, OrderBook: 15594
+2024-11-22 10:03:13,723 - src.data.collector - INFO - Stats after 1490s - Klines: 1022, Trades: 3763, OrderBook: 15594
+2024-11-22 10:03:13,786 - src.data.collector - INFO - Stats after 1490s - Klines: 1022, Trades: 3764, OrderBook: 15594
+2024-11-22 10:03:13,849 - src.data.collector - INFO - Stats after 1490s - Klines: 1022, Trades: 3765, OrderBook: 15594
+2024-11-22 10:03:13,914 - src.data.collector - INFO - Stats after 1490s - Klines: 1022, Trades: 3766, OrderBook: 15594
+2024-11-22 10:03:13,975 - src.data.collector - INFO - Stats after 1490s - Klines: 1022, Trades: 3767, OrderBook: 15594
+2024-11-22 10:03:14,040 - src.data.collector - INFO - Stats after 1490s - Klines: 1022, Trades: 3768, OrderBook: 15594
+2024-11-22 10:03:33,732 - src.data.collector - INFO - Stats after 1510s - Klines: 1036, Trades: 3798, OrderBook: 15845
+2024-11-22 10:03:34,121 - src.data.collector - INFO - Stats after 1510s - Klines: 1036, Trades: 3798, OrderBook: 15856
+2024-11-22 10:03:34,366 - src.data.collector - INFO - Stats after 1510s - Klines: 1037, Trades: 3798, OrderBook: 15856
+2024-11-22 10:03:34,423 - src.data.collector - INFO - Stats after 1510s - Klines: 1037, Trades: 3799, OrderBook: 15856
+2024-11-22 10:03:34,484 - src.data.collector - INFO - Stats after 1510s - Klines: 1037, Trades: 3800, OrderBook: 15856
+2024-11-22 10:03:43,715 - src.data.collector - INFO - Stats after 1520s - Klines: 1043, Trades: 3815, OrderBook: 15931
+2024-11-22 10:03:44,107 - src.data.collector - INFO - Stats after 1520s - Klines: 1043, Trades: 3815, OrderBook: 15934
+2024-11-22 10:03:53,645 - src.data.collector - INFO - Stats after 1530s - Klines: 1050, Trades: 3830, OrderBook: 16037
+2024-11-22 10:03:53,722 - src.data.collector - INFO - Stats after 1530s - Klines: 1050, Trades: 3831, OrderBook: 16037
+2024-11-22 10:03:53,852 - src.data.collector - INFO - Stats after 1530s - Klines: 1050, Trades: 3832, OrderBook: 16037
+2024-11-22 10:03:53,904 - src.data.collector - INFO - Stats after 1530s - Klines: 1050, Trades: 3833, OrderBook: 16037
+2024-11-22 10:03:54,448 - src.data.collector - INFO - Stats after 1530s - Klines: 1050, Trades: 3833, OrderBook: 16040
+2024-11-22 10:04:03,692 - src.data.collector - INFO - Stats after 1540s - Klines: 1054, Trades: 3848, OrderBook: 16101
+2024-11-22 10:04:03,785 - src.data.collector - INFO - Stats after 1540s - Klines: 1055, Trades: 3848, OrderBook: 16101
+2024-11-22 10:04:03,913 - src.data.collector - INFO - Stats after 1540s - Klines: 1056, Trades: 3848, OrderBook: 16101
+2024-11-22 10:04:04,470 - src.data.collector - INFO - Stats after 1540s - Klines: 1056, Trades: 3849, OrderBook: 16101
+2024-11-22 10:04:13,696 - src.data.collector - INFO - Stats after 1550s - Klines: 1062, Trades: 3897, OrderBook: 16222
+2024-11-22 10:04:14,249 - src.data.collector - INFO - Stats after 1550s - Klines: 1062, Trades: 3897, OrderBook: 16231
+2024-11-22 10:04:14,395 - src.data.collector - INFO - Stats after 1550s - Klines: 1062, Trades: 3897, OrderBook: 16235
+2024-11-22 10:04:14,440 - src.data.collector - INFO - Stats after 1550s - Klines: 1062, Trades: 3897, OrderBook: 16236
+2024-11-22 10:04:23,539 - src.data.collector - INFO - Stats after 1560s - Klines: 1073, Trades: 3936, OrderBook: 16388
+2024-11-22 10:04:23,932 - src.data.collector - INFO - Stats after 1560s - Klines: 1073, Trades: 3937, OrderBook: 16388
+2024-11-22 10:04:23,963 - src.data.collector - INFO - Stats after 1560s - Klines: 1074, Trades: 3937, OrderBook: 16388
+2024-11-22 10:04:33,666 - src.data.collector - INFO - Stats after 1570s - Klines: 1081, Trades: 3964, OrderBook: 16486
+2024-11-22 10:04:33,730 - src.data.collector - INFO - Stats after 1570s - Klines: 1081, Trades: 3965, OrderBook: 16486
+2024-11-22 10:04:34,141 - src.data.collector - INFO - Stats after 1570s - Klines: 1081, Trades: 3965, OrderBook: 16488
+2024-11-22 10:04:34,327 - src.data.collector - INFO - Stats after 1570s - Klines: 1081, Trades: 3965, OrderBook: 16494
+2024-11-22 10:04:43,578 - src.data.collector - INFO - Stats after 1580s - Klines: 1084, Trades: 3975, OrderBook: 16573
+2024-11-22 10:04:53,758 - src.data.collector - INFO - Stats after 1590s - Klines: 1089, Trades: 3982, OrderBook: 16645
+2024-11-22 10:04:53,858 - src.data.collector - INFO - Stats after 1590s - Klines: 1089, Trades: 3983, OrderBook: 16645
+2024-11-22 10:04:53,939 - src.data.collector - INFO - Stats after 1590s - Klines: 1089, Trades: 3984, OrderBook: 16645
+2024-11-22 10:04:54,065 - src.data.collector - INFO - Stats after 1590s - Klines: 1089, Trades: 3985, OrderBook: 16645
+2024-11-22 10:04:54,269 - src.data.collector - INFO - Stats after 1590s - Klines: 1089, Trades: 3986, OrderBook: 16645
+2024-11-22 10:04:54,368 - src.data.collector - INFO - Stats after 1590s - Klines: 1089, Trades: 3987, OrderBook: 16645
+2024-11-22 10:04:54,472 - src.data.collector - INFO - Stats after 1590s - Klines: 1089, Trades: 3988, OrderBook: 16645
+2024-11-22 10:05:03,695 - src.data.collector - INFO - Stats after 1600s - Klines: 1098, Trades: 4009, OrderBook: 16764
+2024-11-22 10:05:03,735 - src.data.collector - INFO - Stats after 1600s - Klines: 1098, Trades: 4010, OrderBook: 16764
+2024-11-22 10:05:03,776 - src.data.collector - INFO - Stats after 1600s - Klines: 1098, Trades: 4011, OrderBook: 16764
+2024-11-22 10:05:03,817 - src.data.collector - INFO - Stats after 1600s - Klines: 1098, Trades: 4012, OrderBook: 16764
+2024-11-22 10:05:03,857 - src.data.collector - INFO - Stats after 1600s - Klines: 1098, Trades: 4013, OrderBook: 16764
+2024-11-22 10:05:03,896 - src.data.collector - INFO - Stats after 1600s - Klines: 1099, Trades: 4013, OrderBook: 16764
+2024-11-22 10:05:03,936 - src.data.collector - INFO - Stats after 1600s - Klines: 1100, Trades: 4013, OrderBook: 16764
+2024-11-22 10:05:04,287 - src.data.collector - INFO - Stats after 1600s - Klines: 1100, Trades: 4013, OrderBook: 16773
+2024-11-22 10:05:04,448 - src.data.collector - INFO - Stats after 1600s - Klines: 1100, Trades: 4013, OrderBook: 16778
+2024-11-22 10:05:04,483 - src.data.collector - INFO - Stats after 1600s - Klines: 1100, Trades: 4014, OrderBook: 16778
+2024-11-22 10:05:13,638 - src.data.collector - INFO - Stats after 1610s - Klines: 1106, Trades: 4023, OrderBook: 16867
+2024-11-22 10:05:13,676 - src.data.collector - INFO - Stats after 1610s - Klines: 1106, Trades: 4024, OrderBook: 16867
+2024-11-22 10:05:14,163 - src.data.collector - INFO - Stats after 1610s - Klines: 1106, Trades: 4024, OrderBook: 16870
+2024-11-22 10:05:14,416 - src.data.collector - INFO - Stats after 1610s - Klines: 1106, Trades: 4024, OrderBook: 16878
+2024-11-22 10:05:23,556 - src.data.collector - INFO - Stats after 1620s - Klines: 1108, Trades: 4031, OrderBook: 16929
+2024-11-22 10:05:53,654 - src.data.collector - INFO - Stats after 1650s - Klines: 1128, Trades: 4075, OrderBook: 17273
+2024-11-22 10:05:53,842 - src.data.collector - INFO - Stats after 1650s - Klines: 1128, Trades: 4075, OrderBook: 17279
+2024-11-22 10:05:54,112 - src.data.collector - INFO - Stats after 1650s - Klines: 1128, Trades: 4075, OrderBook: 17288
+2024-11-22 10:05:54,485 - src.data.collector - INFO - Stats after 1650s - Klines: 1128, Trades: 4075, OrderBook: 17294
+2024-11-22 10:06:04,365 - src.data.collector - INFO - Stats after 1660s - Klines: 1135, Trades: 4102, OrderBook: 17370
+2024-11-22 10:06:23,932 - src.data.collector - INFO - Stats after 1680s - Klines: 1150, Trades: 4140, OrderBook: 17682
+2024-11-22 10:06:24,355 - src.data.collector - INFO - Stats after 1680s - Klines: 1150, Trades: 4140, OrderBook: 17696
+2024-11-22 10:06:24,412 - src.data.collector - INFO - Stats after 1680s - Klines: 1150, Trades: 4141, OrderBook: 17696
+2024-11-22 10:06:24,509 - src.data.collector - INFO - Stats after 1680s - Klines: 1150, Trades: 4142, OrderBook: 17696
+2024-11-22 10:06:34,111 - src.data.collector - INFO - Stats after 1690s - Klines: 1154, Trades: 4153, OrderBook: 17766
+2024-11-22 10:06:34,213 - src.data.collector - INFO - Stats after 1690s - Klines: 1154, Trades: 4153, OrderBook: 17767
+2024-11-22 10:06:43,764 - src.data.collector - INFO - Stats after 1700s - Klines: 1165, Trades: 4184, OrderBook: 17918
+2024-11-22 10:06:44,337 - src.data.collector - INFO - Stats after 1700s - Klines: 1165, Trades: 4185, OrderBook: 17918
+2024-11-22 10:06:44,466 - src.data.collector - INFO - Stats after 1700s - Klines: 1165, Trades: 4186, OrderBook: 17918
+2024-11-22 10:06:44,506 - src.data.collector - INFO - Stats after 1700s - Klines: 1165, Trades: 4187, OrderBook: 17918
