@@ -1,87 +1,108 @@
-import yaml
 import logging
-import os
+import signal
+import sys
 from pathlib import Path
+from datetime import datetime
+import os
+from src.config import settings
 from src.data.collector import BinanceDataCollector
 from src.data.auth import BinanceAuth, AuthType
 from src.data.database.connection import MongoDBConnection
-import signal
-import sys
 
-def setup_logging(config):
+def setup_logging():
     """Setup logging configuration"""
     log_dir = Path("logs")
     log_dir.mkdir(exist_ok=True)
 
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = log_dir / f"collector_{timestamp}.log"
+
+    # Configure logging
     logging.basicConfig(
-        level=getattr(logging, config['logging']['level']),
-        format=config['logging']['format'],
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler(config['logging']['file']),
-            logging.StreamHandler()
+            logging.StreamHandler(),
+            logging.FileHandler(log_file)
         ]
     )
+
+    # Set debug level for collector
+    logging.getLogger('src.data.collector').setLevel(logging.DEBUG)
+
     return logging.getLogger(__name__)
 
-def signal_handler(signum, frame):
-    """Handle Ctrl+C gracefully"""
+def handle_shutdown(signum, frame):
+    """Handle shutdown signals"""
     logger = logging.getLogger(__name__)
-    logger.info("\nStopping data collection...")
+    logger.info("\nShutdown signal received. Cleaning up...")
     sys.exit(0)
 
 def main():
     collector = None
     db = None
+
     try:
-        # Load config
-        with open('config/config.yaml') as f:
-            config = yaml.safe_load(f)
-
         # Setup logging
-        logger = setup_logging(config)
+        logger = setup_logging()
 
-        # Setup signal handler
-        signal.signal(signal.SIGINT, signal_handler)
-
-        # Initialize auth
-        auth = BinanceAuth(
-            api_key=config['exchange']['api_key'],
-            auth_type=AuthType.HMAC,
-            secret_key=config['exchange']['secret_key']
-        )
+        # Register signal handlers
+        signal.signal(signal.SIGINT, handle_shutdown)
+        signal.signal(signal.SIGTERM, handle_shutdown)
 
         # Initialize database
-        db = MongoDBConnection(config['database'])
+        logger.info("Connecting to database...")
+        db_config = {
+            'connection_string': settings.mongodb_uri,
+            'name': settings.db_name
+        }
+        db = MongoDBConnection(db_config)
+
         if not db.connect():
             logger.error("Failed to connect to database. Exiting...")
             return
 
+        # Initialize auth
+        auth = BinanceAuth(
+            api_key=settings.binance_api_key,
+            auth_type=AuthType.HMAC,
+            secret_key=settings.binance_secret_key
+        )
+
         # Initialize collector
         collector = BinanceDataCollector(
             auth=auth,
-            symbols=config['exchange']['symbols'],
+            symbols=settings.trading_symbols,
             db=db,
-            use_testnet=config['exchange'].get('use_testnet', True)
+            use_testnet=settings.use_testnet
         )
 
         # Start collection
         logger.info("Starting data collection...")
         collector.start_data_collection()
 
-        # Keep the script running and show stats
+        # Keep script running
         while True:
-            pass
+            signal.pause()
 
     except KeyboardInterrupt:
-        logger.info("\nStopping data collection...")
+        logger.info("\nShutdown requested...")
     except Exception as e:
         logger.error(f"Error in main: {str(e)}")
-        raise
     finally:
         if collector:
-            collector.stop()
+            try:
+                collector.stop()
+            except Exception as e:
+                logger.error(f"Error stopping collector: {e}")
+
         if db:
-            db.close()
+            try:
+                db.close()
+            except Exception as e:
+                logger.error(f"Error closing database: {e}")
+
+        logger.info("Shutdown complete")
 
 if __name__ == "__main__":
     main()
