@@ -1207,3 +1207,17 @@
 2024-11-22 10:07:04,422 - src.data.collector - INFO - Stats after 1720s - Klines: 1177, Trades: 4212, OrderBook: 18111
 2024-11-22 10:07:14,166 - src.data.collector - INFO - Stats after 1730s - Klines: 1186, Trades: 4252, OrderBook: 18259
 2024-11-22 10:07:14,215 - src.data.collector - INFO - Stats after 1730s - Klines: 1186, Trades: 4253, OrderBook: 18259
+2024-11-22 10:07:23,834 - src.data.collector - INFO - Stats after 1740s - Klines: 1193, Trades: 4275, OrderBook: 18404
+2024-11-22 10:07:24,099 - src.data.collector - INFO - Stats after 1740s - Klines: 1193, Trades: 4275, OrderBook: 18405
+2024-11-22 10:07:33,678 - src.data.collector - INFO - Stats after 1750s - Klines: 1200, Trades: 4301, OrderBook: 18518
+2024-11-22 10:07:34,172 - src.data.collector - INFO - Stats after 1750s - Klines: 1200, Trades: 4301, OrderBook: 18521
+2024-11-22 10:07:34,246 - src.data.collector - INFO - Stats after 1750s - Klines: 1200, Trades: 4301, OrderBook: 18523
+2024-11-22 10:07:44,124 - src.data.collector - INFO - Stats after 1760s - Klines: 1206, Trades: 4336, OrderBook: 18596
+2024-11-22 10:07:44,287 - src.data.collector - INFO - Stats after 1760s - Klines: 1206, Trades: 4336, OrderBook: 18601
+2024-11-22 10:07:53,884 - src.data.collector - INFO - Stats after 1770s - Klines: 1211, Trades: 4347, OrderBook: 18678
+2024-11-22 10:07:54,290 - src.data.collector - INFO - Stats after 1770s - Klines: 1211, Trades: 4347, OrderBook: 18682
+2024-11-22 10:07:54,497 - src.data.collector - INFO - Stats after 1770s - Klines: 1211, Trades: 4347, OrderBook: 18686
+2024-11-22 10:08:03,917 - src.data.collector - INFO - Stats after 1780s - Klines: 1218, Trades: 4374, OrderBook: 18791
+2024-11-22 10:08:04,471 - src.data.collector - INFO - Stats after 1780s - Klines: 1218, Trades: 4374, OrderBook: 18798
+2024-11-22 10:08:13,544 - src.data.collector - INFO - Stats after 1790s - Klines: 1220, Trades: 4378, OrderBook: 18861
+2024-11-22 10:08:14,498 - src.data.collector - INFO - Stats after 1790s - Klines: 1220, Trades: 4378, OrderBook: 18870
