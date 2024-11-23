@@ -3,7 +3,6 @@ import signal
 import sys
 from pathlib import Path
 from datetime import datetime
-import os
 from src.config import settings
 from src.data.collector import BinanceDataCollector
 from src.data.auth import BinanceAuth, AuthType

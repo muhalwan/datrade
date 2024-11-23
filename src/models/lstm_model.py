@@ -6,6 +6,7 @@ import tensorflow as tf
 from tensorflow.keras.models import Sequential, save_model, load_model
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 from tensorflow.keras.optimizers import Adam
+from sklearn.preprocessing import MinMaxScaler
 import joblib
 
 from .base import BaseModel, ModelConfig
@@ -15,55 +16,72 @@ class LSTMModel(BaseModel):
 
     def __init__(self, config: ModelConfig):
         super().__init__(config)
-        self.sequence_length = config.params.get('sequence_length', 60)
-        self.batch_size = config.params.get('batch_size', 32)
-        self.epochs = config.params.get('epochs', 50)
-        self.validation_split = config.params.get('validation_split', 0.2)
-        self.scaler = None
+        # Adjust sequence length based on data size
+        self.sequence_length = config.params.get('sequence_length', 3)  # Reduced from 60
+        self.batch_size = config.params.get('batch_size', 2)  # Reduced from 32
+        self.epochs = config.params.get('epochs', 20)  # Reduced from 50
+        self.validation_split = config.params.get('validation_split', 0.1)  # Reduced from 0.2
+        self.scaler = MinMaxScaler()
         self.logger = logging.getLogger(__name__)
 
     def _create_sequences(self, data: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Create sequences for LSTM"""
-        X, y = [], []
-        for i in range(len(data) - self.sequence_length):
-            X.append(data[i:(i + self.sequence_length)])
-            y.append(data[i + self.sequence_length, 0])
-        return np.array(X), np.array(y)
+        try:
+            # Ensure we have enough data points
+            if len(data) <= self.sequence_length:
+                self.logger.warning(f"Data length ({len(data)}) is less than sequence length ({self.sequence_length})")
+                # Adjust sequence length to be 1/3 of data length
+                self.sequence_length = max(2, len(data) // 3)
+                self.logger.info(f"Adjusted sequence length to {self.sequence_length}")
 
-    def preprocess(self, df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
-        """Preprocess data for LSTM"""
-        # Select features and scale
-        features = df[self.config.features].values
+            X, y = [], []
+            for i in range(len(data) - self.sequence_length):
+                X.append(data[i:(i + self.sequence_length)])
+                y.append(data[i + self.sequence_length, 0])  # Predict close price
 
-        # Initialize and fit scaler on first call
-        if self.scaler is None:
-            self.scaler = tf.keras.preprocessing.MinMaxScaler()
-            features_scaled = self.scaler.fit_transform(features)
-        else:
-            features_scaled = self.scaler.transform(features)
+            X = np.array(X)
+            y = np.array(y)
 
-        # Create sequences
-        X, y = self._create_sequences(features_scaled)
-        return X, y
+            self.logger.info(f"Created sequences - X shape: {X.shape}, y shape: {y.shape}")
+            return X, y
+
+        except Exception as e:
+            self.logger.error(f"Error creating sequences: {str(e)}")
+            raise
 
     def train(self, df: pd.DataFrame) -> None:
         """Train LSTM model"""
         try:
+            self.logger.info("Starting LSTM model training...")
+            self.logger.info(f"Input data shape: {df.shape}")
+
+            # Handle small datasets
+            if len(df) < 10:  # Minimum data requirement
+                raise ValueError(f"Insufficient data points ({len(df)}) for training. Need at least 10.")
+
             X, y = self.preprocess(df)
 
+            # Adjust batch size if necessary
+            if len(X) < self.batch_size:
+                self.batch_size = max(1, len(X) // 2)
+                self.logger.warning(f"Adjusted batch size to {self.batch_size}")
+
+            # Create a simpler model for small datasets
             model = Sequential([
-                LSTM(128, return_sequences=True,
+                LSTM(32, return_sequences=True,
                      input_shape=(self.sequence_length, len(self.config.features))),
-                Dropout(0.2),
-                LSTM(64, return_sequences=False),
-                Dropout(0.2),
-                Dense(32),
+                Dropout(0.1),
+                LSTM(16, return_sequences=False),
+                Dense(8),
                 Dense(1)
             ])
 
             model.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
 
-            model.fit(
+            self.logger.info("\nModel Architecture:")
+            model.summary(print_fn=self.logger.info)
+
+            history = model.fit(
                 X, y,
                 epochs=self.epochs,
                 batch_size=self.batch_size,
@@ -73,52 +91,11 @@ class LSTMModel(BaseModel):
 
             self.model = model
 
+            self.logger.info("\nTraining completed:")
+            self.logger.info(f"Final loss: {history.history['loss'][-1]:.4f}")
+            if 'val_loss' in history.history:
+                self.logger.info(f"Final validation loss: {history.history['val_loss'][-1]:.4f}")
+
         except Exception as e:
             self.logger.error(f"Error training LSTM model: {str(e)}")
-            raise
-
-    def predict(self, df: pd.DataFrame) -> np.ndarray:
-        """Make predictions with LSTM"""
-        try:
-            if self.model is None:
-                raise ValueError("Model not trained")
-
-            X, _ = self.preprocess(df)
-            predictions_scaled = self.model.predict(X)
-
-            # Inverse transform predictions
-            predictions = np.zeros((len(predictions_scaled), len(self.config.features)))
-            predictions[:, 0] = predictions_scaled.flatten()
-            predictions = self.scaler.inverse_transform(predictions)[:, 0]
-
-            return predictions
-
-        except Exception as e:
-            self.logger.error(f"Error making predictions: {str(e)}")
-            raise
-
-    def save(self, path: str) -> None:
-        """Save LSTM model"""
-        try:
-            model_path = f"{path}/lstm_model"
-            scaler_path = f"{path}/lstm_scaler.pkl"
-
-            save_model(self.model, model_path)
-            joblib.dump(self.scaler, scaler_path)
-
-        except Exception as e:
-            self.logger.error(f"Error saving LSTM model: {str(e)}")
-            raise
-
-    def load(self, path: str) -> None:
-        """Load LSTM model"""
-        try:
-            model_path = f"{path}/lstm_model"
-            scaler_path = f"{path}/lstm_scaler.pkl"
-
-            self.model = load_model(model_path)
-            self.scaler = joblib.load(scaler_path)
-
-        except Exception as e:
-            self.logger.error(f"Error loading LSTM model: {str(e)}")
             raise
