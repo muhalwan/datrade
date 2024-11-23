@@ -1,7 +1,0 @@
-metrics:
-  directional_accuracy: 0.6
-  mae: 5051.989890478525
-  mse: 25528611.74570044
-  rmse: 5052.58465992411
-timestamp: 2024-11-24 04:42:00.058501
-train_time: 7.778654
