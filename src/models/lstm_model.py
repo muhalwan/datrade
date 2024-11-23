@@ -4,12 +4,14 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from tensorflow.keras.models import Sequential, save_model, load_model
-from tensorflow.keras.layers import LSTM, Dense, Dropout, BatchNormalization, Input
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from sklearn.preprocessing import MinMaxScaler
 import joblib
 import os
+from tensorflow.keras.layers import (
+    LSTM, Dense, Dropout, BatchNormalization, Input,
+    Bidirectional, MultiHeadAttention, LayerNormalization,
+    GlobalAveragePooling1D, TimeDistributed
+)
 
 from .base import BaseModel, ModelConfig
 
@@ -19,10 +21,16 @@ class LSTMModel(BaseModel):
     def __init__(self, config: ModelConfig):
         super().__init__(config)
         # Model parameters
-        self.sequence_length = config.params.get('sequence_length', 5)
+        self.sequence_length = config.params.get('sequence_length', 10)
         self.batch_size = config.params.get('batch_size', 32)
         self.epochs = config.params.get('epochs', 100)
         self.validation_split = config.params.get('validation_split', 0.2)
+        self.learning_rate = config.params.get('learning_rate', 0.001)
+        self.weight_decay = config.params.get('weight_decay', 0.004)
+
+        # Add tensorboard directory
+        self.tensorboard_dir = Path('logs/tensorboard')
+        self.tensorboard_dir.mkdir(parents=True, exist_ok=True)
 
         # Initialize components
         self.scaler = MinMaxScaler()
@@ -32,33 +40,60 @@ class LSTMModel(BaseModel):
         self.training_time = None
 
     def build_model(self, input_shape: tuple) -> Sequential:
-        """Build optimized LSTM architecture"""
-        model = Sequential([
-            Input(shape=input_shape),
+        """Build advanced LSTM architecture with attention"""
+        try:
+            # Input shape is (sequence_length, n_features)
+            inputs = Input(shape=input_shape)
 
-            # First LSTM layer
-            LSTM(64, return_sequences=True),
-            BatchNormalization(),
-            Dropout(0.2),
+            # First Bidirectional LSTM layer
+            x = Bidirectional(LSTM(128, return_sequences=True))(inputs)
+            x = BatchNormalization()(x)
+            x = Dropout(0.3)(x)
 
-            # Second LSTM layer
-            LSTM(32, return_sequences=False),
-            BatchNormalization(),
-            Dropout(0.1),
+            # Self-attention mechanism
+            attention = MultiHeadAttention(
+                num_heads=4,
+                key_dim=32,
+            )(x, x)
+            x = LayerNormalization()(attention + x)  # Skip connection
 
-            # Dense layers
-            Dense(16, activation='relu'),
-            BatchNormalization(),
+            # Second Bidirectional LSTM layer
+            x = Bidirectional(LSTM(64, return_sequences=True))(x)
+            x = BatchNormalization()(x)
+            x = Dropout(0.2)(x)
 
-            Dense(1)
-        ])
+            # Global pooling to reduce sequence dimension
+            x = GlobalAveragePooling1D()(x)
 
-        model.compile(
-            optimizer=Adam(learning_rate=0.001),
-            loss='huber'  # More robust to outliers
-        )
+            # Dense layers for final processing
+            x = Dense(64, activation='relu')(x)
+            x = BatchNormalization()(x)
+            x = Dropout(0.2)(x)
 
-        return model
+            x = Dense(32, activation='relu')(x)
+            x = BatchNormalization()(x)
+
+            # Output layer
+            outputs = Dense(1)(x)
+
+            model = tf.keras.Model(inputs=inputs, outputs=outputs)
+
+            # Compile with AdamW optimizer and Huber loss
+            optimizer = AdamW(
+                learning_rate=self.config.params.get('learning_rate', 0.001),
+                weight_decay=self.config.params.get('weight_decay', 0.004)
+            )
+
+            model.compile(
+                optimizer=optimizer,
+                loss='huber'
+            )
+
+            return model
+
+        except Exception as e:
+            self.logger.error(f"Error building LSTM model: {str(e)}")
+            raise
 
     def _create_sequences(self, data: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Create sequences efficiently"""
@@ -121,42 +156,79 @@ class LSTMModel(BaseModel):
 
             # Setup callbacks
             callbacks = [
-                EarlyStopping(
+                # Early stopping with restore
+                tf.keras.callbacks.EarlyStopping(
                     monitor='val_loss',
-                    patience=10,
+                    patience=15,
                     restore_best_weights=True,
                     mode='min'
                 ),
-                ReduceLROnPlateau(
+                # Learning rate reduction
+                tf.keras.callbacks.ReduceLROnPlateau(
                     monitor='val_loss',
                     factor=0.5,
-                    patience=5,
+                    patience=7,
                     min_lr=0.00001,
-                    mode='min'
+                    mode='min',
+                    verbose=1
+                ),
+                # Model checkpoint
+                tf.keras.callbacks.ModelCheckpoint(
+                    filepath='models/temp/lstm_checkpoint',
+                    save_best_only=True,
+                    monitor='val_loss',
+                    mode='min',
+                    verbose=0
+                ),
+                # Tensorboard logging
+                tf.keras.callbacks.TensorBoard(
+                    log_dir=f'logs/tensorboard/lstm_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}',
+                    histogram_freq=1
                 )
             ]
 
-            # Train model
+            # Train model with gradient clipping
             self.history = self.model.fit(
                 X, y,
                 epochs=self.epochs,
                 batch_size=self.batch_size,
                 validation_split=self.validation_split,
                 callbacks=callbacks,
-                verbose=1
+                verbose=1,
+                shuffle=False,  # Important for time series
+                clip_norm=1.0  # Gradient clipping
             )
 
             self.training_time = (pd.Timestamp.now() - start_time).total_seconds()
 
             # Log results
+            self._log_training_results()
+
+        except Exception as e:
+            self.logger.error(f"Error training LSTM model: {str(e)}")
+            raise
+
+    def _log_training_results(self):
+        """Log training results and metrics"""
+        try:
             self.logger.info(f"Training completed: {len(self.history.history['loss'])} epochs")
             self.logger.info(f"Final loss: {self.history.history['loss'][-1]:.4f}")
             self.logger.info(f"Final val_loss: {self.history.history['val_loss'][-1]:.4f}")
             self.logger.info(f"Training time: {self.training_time:.2f} seconds")
 
+            # Calculate additional metrics
+            best_epoch = np.argmin(self.history.history['val_loss'])
+            self.logger.info(f"Best epoch: {best_epoch + 1}")
+            self.logger.info(f"Best val_loss: {self.history.history['val_loss'][best_epoch]:.4f}")
+
+            # Learning rate progression
+            lr_history = self.history.history.get('lr', [])
+            if lr_history:
+                self.logger.info(f"Initial LR: {lr_history[0]:.6f}")
+                self.logger.info(f"Final LR: {lr_history[-1]:.6f}")
+
         except Exception as e:
-            self.logger.error(f"Error training LSTM model: {str(e)}")
-            raise
+            self.logger.error(f"Error logging training results: {str(e)}")
 
     def predict(self, df: pd.DataFrame) -> np.ndarray:
         """Make predictions with proper error handling"""
