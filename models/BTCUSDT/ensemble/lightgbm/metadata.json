@@ -1,0 +1,25 @@
+{
+    "params": {
+        "objective": "regression",
+        "metric": "rmse",
+        "num_leaves": 31,
+        "learning_rate": 0.01,
+        "feature_fraction": 0.8,
+        "bagging_fraction": 0.8,
+        "bagging_freq": 5,
+        "verbose": -1,
+        "min_data_in_leaf": 20,
+        "max_depth": 6,
+        "num_threads": 4
+    },
+    "features": [
+        "close",
+        "volume",
+        "rsi",
+        "macd",
+        "bb_high",
+        "bb_low",
+        "mfi"
+    ],
+    "training_time": 0.056876
+}

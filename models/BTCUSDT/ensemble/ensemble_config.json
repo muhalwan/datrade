@@ -1,0 +1,65 @@
+{
+    "weights": {
+        "lstm": 0.6666666666666666,
+        "lightgbm": 0.3333333333333333
+    },
+    "metrics": {
+        "lstm": {
+            "prediction_time": 0.043803,
+            "last_prediction": "2024-11-24 04:42:00.183400"
+        },
+        "lightgbm": {
+            "prediction_time": 0.015543,
+            "last_prediction": "2024-11-24 04:42:00.198960"
+        }
+    },
+    "model_configs": {
+        "lstm": {
+            "name": "lstm",
+            "type": "ModelType.LSTM",
+            "params": {
+                "sequence_length": 5,
+                "batch_size": 32,
+                "epochs": 100,
+                "validation_split": 0.2
+            },
+            "features": [
+                "close",
+                "volume",
+                "rsi",
+                "macd",
+                "bb_high",
+                "bb_low"
+            ],
+            "target": "close",
+            "enabled": true
+        },
+        "lightgbm": {
+            "name": "lightgbm",
+            "type": "ModelType.LIGHTGBM",
+            "params": {
+                "objective": "regression",
+                "metric": "rmse",
+                "num_leaves": 31,
+                "learning_rate": 0.01,
+                "feature_fraction": 0.8,
+                "bagging_fraction": 0.8,
+                "bagging_freq": 5,
+                "verbose": -1,
+                "min_data_in_leaf": 20,
+                "max_depth": 6
+            },
+            "features": [
+                "close",
+                "volume",
+                "rsi",
+                "macd",
+                "bb_high",
+                "bb_low",
+                "mfi"
+            ],
+            "target": "close",
+            "enabled": true
+        }
+    }
+}

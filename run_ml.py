@@ -1,154 +1,197 @@
+#!/usr/bin/env python3
+
 import logging
 import signal
 import sys
 from pathlib import Path
 from datetime import datetime, timedelta
 import os
+import yaml
+from typing import Dict
+import pandas as pd
+
 from src.config import settings
 from src.data.database.connection import MongoDBConnection
+from src.features.engineering import FeatureEngineering
 from src.models.training import ModelTrainer
+from src.monitoring.metrics import PerformanceMonitor
 
-# Suppress TensorFlow logging
+# Suppress TensorFlow warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 def setup_logging():
     """Setup logging configuration"""
-    log_dir = Path("logs")
-    log_dir.mkdir(exist_ok=True)
+    log_dir = Path("logs/training")
+    log_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = log_dir / f"ml_training_{timestamp}.log"
+    log_file = log_dir / f"training_{timestamp}.log"
 
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.StreamHandler(),
-            logging.FileHandler(log_file)
+            logging.FileHandler(log_file),
+            logging.StreamHandler()
         ]
     )
 
     return logging.getLogger(__name__)
 
-def handle_shutdown(signum, frame):
-    """Handle shutdown signals"""
-    logger = logging.getLogger(__name__)
-    logger.info("\nShutdown signal received. Cleaning up...")
-    sys.exit(0)
+def load_model_config() -> Dict:
+    """Load model configuration"""
+    config_path = Path("config/model_config.yaml")
+    if not config_path.exists():
+        raise FileNotFoundError("Model configuration file not found")
 
-def get_data_timerange(db, logger, symbol: str) -> tuple:
-    """Get the actual time range of available data"""
+    with open(config_path) as f:
+        return yaml.safe_load(f)
+
+def fetch_training_data(db: MongoDBConnection, symbol: str,
+                        start_time: datetime, end_time: datetime) -> pd.DataFrame:
+    """Fetch historical data for training"""
     try:
         collection = db.get_collection('price_data')
 
-        first_record = collection.find_one(
-            {"symbol": symbol},
-            sort=[("timestamp", 1)]
-        )
-        last_record = collection.find_one(
-            {"symbol": symbol},
-            sort=[("timestamp", -1)]
-        )
-
-        if first_record and last_record:
-            start_time = first_record['timestamp']
-            end_time = last_record['timestamp']
-
-            # Add small buffer
-            start_time = start_time + timedelta(minutes=1)
-            end_time = end_time - timedelta(minutes=1)
-
-            data_count = collection.count_documents({
-                "symbol": symbol,
-                "timestamp": {
-                    "$gte": start_time,
-                    "$lte": end_time
+        # Fetch data with MongoDB aggregation
+        pipeline = [
+            {
+                '$match': {
+                    'symbol': symbol,
+                    'timestamp': {
+                        '$gte': start_time,
+                        '$lte': end_time
+                    }
                 }
-            })
+            },
+            {
+                '$sort': {'timestamp': 1}
+            },
+            {
+                '$project': {
+                    '_id': 0,
+                    'timestamp': 1,
+                    'price': 1,
+                    'quantity': 1,
+                    'is_buyer_maker': 1
+                }
+            }
+        ]
 
-            logger.info(f"Data range for {symbol}:")
-            logger.info(f"Start time: {start_time}")
-            logger.info(f"End time: {end_time}")
-            logger.info(f"Total records: {data_count}")
+        data = list(collection.aggregate(pipeline))
+        df = pd.DataFrame(data)
 
-            return start_time, end_time, data_count
+        if df.empty:
+            return pd.DataFrame()
 
-        return None, None, 0
+        # Convert to OHLCV format
+        df.set_index('timestamp', inplace=True)
+        ohlcv = pd.DataFrame()
+        ohlcv['open'] = df['price'].resample('1Min').first()
+        ohlcv['high'] = df['price'].resample('1Min').max()
+        ohlcv['low'] = df['price'].resample('1Min').min()
+        ohlcv['close'] = df['price'].resample('1Min').last()
+        ohlcv['volume'] = df['quantity'].resample('1Min').sum()
+
+        return ohlcv.dropna()
 
     except Exception as e:
-        logger.error(f"Error getting data timerange: {str(e)}")
-        return None, None, 0
+        logging.getLogger(__name__).error(f"Error fetching data: {str(e)}")
+        return pd.DataFrame()
 
 def main():
-    db = None
     logger = setup_logging()
+    db = None
+    monitor = None
 
     try:
-        # Register signal handlers
-        signal.signal(signal.SIGINT, handle_shutdown)
-        signal.signal(signal.SIGTERM, handle_shutdown)
+        # Initialize monitoring
+        monitor = PerformanceMonitor()
+        monitor.start_monitoring()
+
+        # Load configurations
+        logger.info("Loading configurations...")
+        model_config = load_model_config()
 
         # Initialize database
         logger.info("Connecting to database...")
-        db_config = {
+        db = MongoDBConnection({
             'connection_string': settings.mongodb_uri,
             'name': settings.db_name
-        }
-        db = MongoDBConnection(db_config)
+        })
 
         if not db.connect():
             logger.error("Failed to connect to database. Exiting...")
             return
 
+        # Initialize components
+        feature_eng = FeatureEngineering(db)
+        trainer = ModelTrainer(db)
+
         # Process each symbol
         for symbol in settings.trading_symbols:
-            logger.info(f"\nChecking data for {symbol}")
-
-            # Get actual data time range
-            start_time, end_time, data_count = get_data_timerange(db, logger, symbol)
-
-            if not start_time or not end_time:
-                logger.warning(f"No data available for {symbol}")
-                continue
-
-            # For training/testing split, use 80% of data for training
-            time_span = end_time - start_time
-            train_end = start_time + (time_span * 0.8)
-
-            logger.info(f"Training period: {start_time} to {train_end}")
-            logger.info(f"Testing period: {train_end} to {end_time}")
+            logger.info(f"\nProcessing {symbol}")
 
             try:
-                # Initialize model trainer
-                trainer = ModelTrainer(db)
+                # Get training period
+                end_time = datetime.now()
+                days_back = model_config.get('training_days', 30)
+                start_time = end_time - timedelta(days=days_back)
+
+                logger.info(f"Training period: {start_time} to {end_time}")
+
+                # Fetch training data
+                df = fetch_training_data(db, symbol, start_time, end_time)
+
+                if df.empty:
+                    logger.warning(f"No historical data found for {symbol}")
+                    continue
+
+                logger.info(f"Fetched {len(df)} data points")
+
+                # Generate features
+                features_df = feature_eng.generate_features(df)
+
+                if features_df.empty:
+                    logger.warning(f"No features generated for {symbol}")
+                    continue
+
+                logger.info(f"Generated features shape: {features_df.shape}")
+
+                # Train/test split
+                split_point = int(len(features_df) * 0.8)
+                train_df = features_df[:split_point].copy()
+                test_df = features_df[split_point:].copy()
+
+                logger.info(f"Training set: {len(train_df)}, Test set: {len(test_df)}")
 
                 # Train models
                 logger.info("Training models...")
-                models = trainer.train(
-                    symbol=symbol,
-                    start_time=start_time,
-                    end_time=train_end
-                )
 
-                # Generate test features
-                test_features = trainer.feature_eng.generate_features(
-                    symbol=symbol,
-                    start_time=train_end,
-                    end_time=end_time
-                )
+                try:
+                    models = trainer.train(
+                        symbol=symbol,
+                        train_data=train_df,
+                        test_data=test_df
+                    )
 
-                if test_features.empty:
-                    logger.warning(f"No test data available for {symbol}")
+                    # Create models directory
+                    models_dir = Path("models")
+                    models_dir.mkdir(exist_ok=True)
+
+                    # Save models
+                    logger.info("Saving models...")
+                    trainer.save_models(models, symbol)
+
+                    # Log performance metrics
+                    for name, metrics in trainer.get_model_metrics(symbol).items():
+                        logger.info(f"\nMetrics for {name}:")
+                        for metric, value in metrics.items():
+                            logger.info(f"{metric}: {value:.4f}")
+
+                except Exception as e:
+                    logger.error(f"Error in model training: {str(e)}")
                     continue
-
-                # Evaluate models
-                results = trainer.evaluate_models(models, test_features)
-
-                # Create models directory
-                os.makedirs("models", exist_ok=True)
-
-                # Save models
-                trainer.save_models(models, symbol)
 
                 logger.info(f"Successfully completed processing for {symbol}")
 
@@ -156,12 +199,16 @@ def main():
                 logger.error(f"Error processing {symbol}: {str(e)}")
                 continue
 
+    except KeyboardInterrupt:
+        logger.info("\nTraining interrupted by user")
     except Exception as e:
-        logger.error(f"Error in main: {str(e)}")
+        logger.error(f"Training error: {str(e)}")
     finally:
+        if monitor:
+            monitor.stop_monitoring()
         if db:
             db.close()
-            logger.info("ML Training complete")
+        logger.info("Training complete")
 
 if __name__ == "__main__":
     main()

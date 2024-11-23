@@ -1,0 +1,33 @@
+{
+    "features": [
+        "close",
+        "volume",
+        "rsi",
+        "macd",
+        "bb_high",
+        "bb_low",
+        "mfi"
+    ],
+    "params": {
+        "objective": "regression",
+        "metric": [
+            "mae",
+            "mse",
+            "rmse"
+        ],
+        "num_leaves": 31,
+        "learning_rate": 0.05,
+        "feature_fraction": 0.9,
+        "bagging_fraction": 0.8,
+        "bagging_freq": 5,
+        "verbose": -1,
+        "num_threads": 4,
+        "max_depth": -1,
+        "min_data_in_leaf": 20,
+        "lambda_l1": 0.1,
+        "lambda_l2": 0.1
+    },
+    "num_boost_round": 1000,
+    "early_stopping_rounds": 50,
+    "eval_results": {}
+}

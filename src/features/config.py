@@ -36,12 +36,19 @@ DEFAULT_FEATURES = [
     FeatureConfig(
         name="MACD",
         type=FeatureType.MOMENTUM,
-        params={"window_slow": 26, "window_fast": 12, "window_sign": 9}
+        params={
+            "window_slow": 26,
+            "window_fast": 12,
+            "window_sign": 9
+        }
     ),
     FeatureConfig(
         name="BB",
         type=FeatureType.VOLATILITY,
-        params={"window": 20, "window_dev": 2}
+        params={
+            "window": 20,
+            "window_dev": 2
+        }
     ),
     FeatureConfig(
         name="OBV",

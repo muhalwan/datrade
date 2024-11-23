@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 from dataclasses import dataclass
@@ -12,22 +12,24 @@ class ModelType(Enum):
 
 @dataclass
 class ModelConfig:
+    """Model configuration"""
     name: str
     type: ModelType
     params: Dict
     features: List[str]
-    target: str
+    target: str = 'close'
     enabled: bool = True
 
 class BaseModel(ABC):
     """Abstract base class for all models"""
 
     def __init__(self, config: ModelConfig):
+        """Initialize model with configuration"""
         self.config = config
         self.model = None
 
     @abstractmethod
-    def preprocess(self, df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
+    def preprocess(self, df: pd.DataFrame):
         """Preprocess data for model"""
         pass
 
