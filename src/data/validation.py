@@ -4,107 +4,68 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 class DataValidator:
-    """Validates trading data"""
-
     def __init__(self):
         self.logger = logging.getLogger(__name__)
 
     def validate_trade(self, trade: Dict) -> bool:
-        """Validate trade data"""
         try:
-            # Check required fields
-            required = ['price', 'quantity', 'timestamp', 'symbol']
-            if not all(k in trade for k in required):
-                self.logger.debug(f"Missing required fields in trade data: {trade}")
+            required = {'price', 'quantity', 'timestamp', 'symbol'}
+            if not required.issubset(trade.keys()):
                 return False
 
-            # Validate numeric values
             price = float(trade['price'])
             quantity = float(trade['quantity'])
             if price <= 0 or quantity <= 0:
-                self.logger.debug(f"Invalid price or quantity in trade: price={price}, quantity={quantity}")
                 return False
 
-            # Validate timestamp
-            if isinstance(trade['timestamp'], (int, float)):
-                ts = pd.to_datetime(trade['timestamp'], unit='ms')
-            else:
-                ts = pd.to_datetime(trade['timestamp'])
-
-            # Check if timestamp is reasonable (within last day and not in future)
             now = datetime.now()
+            ts = pd.to_datetime(trade['timestamp']) if isinstance(trade['timestamp'], datetime) \
+                else pd.to_datetime(trade['timestamp'], unit='ms')
+
             if ts > now + timedelta(minutes=1) or ts < now - timedelta(days=1):
-                self.logger.debug(f"Invalid timestamp in trade: {ts}")
                 return False
 
             return True
-
-        except Exception as e:
-            self.logger.debug(f"Trade validation failed: {e}")
+        except Exception:
             return False
 
     def validate_orderbook(self, order: Dict) -> bool:
-        """Validate orderbook data"""
         try:
-            # Check required fields
-            required = ['timestamp', 'symbol', 'side', 'price', 'quantity']
-            if not all(k in order for k in required):
-                self.logger.debug(f"Missing required fields in order: {order}")
+            required = {'timestamp', 'symbol', 'side', 'price', 'quantity'}
+            if not required.issubset(order.keys()):
                 return False
 
-            # Validate numeric values
-            try:
-                price = float(order['price'])
-                quantity = float(order['quantity'])
-            except (ValueError, TypeError):
-                self.logger.debug(f"Invalid price or quantity format in order: price={order['price']}, quantity={order['quantity']}")
-                return False
-
+            price = float(order['price'])
+            quantity = float(order['quantity'])
             if price <= 0 or quantity <= 0:
-                self.logger.debug(f"Non-positive price or quantity in order: price={price}, quantity={quantity}")
                 return False
 
-            # Validate side
-            if str(order['side']).lower() not in ['bid', 'ask']:
-                self.logger.debug(f"Invalid side in order: {order['side']}")
+            if str(order['side']).lower() not in {'bid', 'ask'}:
                 return False
-
-            # Validate timestamp (should be within last minute)
-            if isinstance(order['timestamp'], (int, float)):
-                ts = pd.to_datetime(order['timestamp'], unit='ms')
-            else:
-                ts = pd.to_datetime(order['timestamp'])
 
             now = datetime.now()
+            ts = pd.to_datetime(order['timestamp']) if isinstance(order['timestamp'], datetime) \
+                else pd.to_datetime(order['timestamp'], unit='ms')
+
             if ts > now + timedelta(minutes=1) or ts < now - timedelta(minutes=1):
-                self.logger.debug(f"Invalid timestamp in order: {ts}")
                 return False
 
             return True
-
-        except Exception as e:
-            self.logger.debug(f"Orderbook validation failed: {e}")
+        except Exception:
             return False
 
 class DataCleaner:
-    """Cleans and normalizes trading data"""
-
     def __init__(self):
         self.logger = logging.getLogger(__name__)
 
     def clean_trade(self, trade: Dict) -> Optional[Dict]:
-        """Clean trade data"""
         try:
-            # Handle timestamp conversion
-            if isinstance(trade['timestamp'], (int, float)):
-                timestamp = pd.to_datetime(trade['timestamp'], unit='ms')
-            else:
-                timestamp = pd.to_datetime(trade['timestamp'])
+            timestamp = pd.to_datetime(trade['timestamp']) if isinstance(trade['timestamp'], datetime) \
+                else pd.to_datetime(trade['timestamp'], unit='ms')
 
             return {
                 'timestamp': timestamp,
                 'symbol': str(trade['symbol']).upper(),
-                'trade_id': trade.get('t'),
                 'price': float(trade['price']),
                 'quantity': float(trade['quantity']),
                 'is_buyer_maker': bool(trade.get('m', False)),
@@ -115,27 +76,18 @@ class DataCleaner:
             return None
 
     def clean_orderbook(self, order: Dict) -> Optional[Dict]:
-        """Clean orderbook data"""
         try:
-            # Handle timestamp conversion
-            if isinstance(order['timestamp'], (int, float)):
-                timestamp = pd.to_datetime(order['timestamp'], unit='ms')
-            else:
-                timestamp = pd.to_datetime(order['timestamp'])
+            timestamp = pd.to_datetime(order['timestamp']) if isinstance(order['timestamp'], datetime) \
+                else pd.to_datetime(order['timestamp'], unit='ms')
 
-            cleaned_order = {
+            return {
                 'timestamp': timestamp,
                 'symbol': str(order['symbol']).upper(),
                 'side': str(order['side']).lower(),
                 'price': float(order['price']),
-                'quantity': float(order['quantity'])
+                'quantity': float(order['quantity']),
+                'update_id': int(order.get('update_id', 0))
             }
-
-            # Add update_id if available
-            if 'update_id' in order:
-                cleaned_order['update_id'] = int(order['update_id'])
-
-            return cleaned_order
         except Exception as e:
             self.logger.error(f"Error cleaning orderbook: {e}")
             return None

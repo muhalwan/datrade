@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field
 from typing import List
-import json
+import yaml
 import os
 
 class Settings(BaseSettings):
@@ -25,20 +25,22 @@ class Settings(BaseSettings):
         env='BINANCE_SECRET_KEY'
     )
     use_testnet: bool = Field(default=True, env='USE_TESTNET')
-
-    # Trading settings
-    trading_symbols: List[str] = Field(default_factory=lambda: ["BTCUSDT"])
+    trading_symbols: List[str] = Field(default=["BTCUSDT"])
 
     @classmethod
-    def get_symbols(cls) -> List[str]:
-        symbols = os.getenv('TRADING_SYMBOLS')
-        if symbols:
-            return json.loads(symbols)
-        return ["BTCUSDT"]
+    def from_yaml(cls, yaml_file: str):
+        with open(yaml_file, 'r') as f:
+            config_data = yaml.safe_load(f)
 
-    class Config:
-        env_file = '.env'
-        case_sensitive = False
+        return cls(
+            mongodb_uri=config_data['database']['connection_string'],
+            db_name=config_data['database']['name'],
+            binance_api_key=config_data['exchange']['api_key'],
+            binance_secret_key=config_data['exchange']['secret_key'],
+            use_testnet=config_data['exchange']['use_testnet'],
+            trading_symbols=config_data['exchange']['symbols']
+        )
 
-# Create settings instance
-settings = Settings()
+# Load settings from YAML or environment variables
+yaml_path = 'config/config.yaml'
+settings = Settings.from_yaml(yaml_path) if os.path.exists(yaml_path) else Settings()
