@@ -114,6 +114,14 @@ class BaseModel(ABC):
     def _calculate_metrics(self, y_true: np.ndarray, y_pred: np.ndarray) -> ModelMetrics:
         """Calculate comprehensive model metrics"""
         try:
+            # Remove NaN values for metric calculation
+            mask = ~np.isnan(y_true) & ~np.isnan(y_pred)
+            y_true = y_true[mask]
+            y_pred = y_pred[mask]
+
+            if len(y_true) == 0:
+                raise ValueError("No valid data points for metric calculation")
+
             mse = np.mean((y_true - y_pred) ** 2)
             rmse = np.sqrt(mse)
             mae = np.mean(np.abs(y_true - y_pred))
@@ -148,6 +156,7 @@ class BaseModel(ABC):
         """Get validation history"""
         return self.validation_history
 
+    @abstractmethod
     def save(self, path: str) -> None:
         """Save model and metadata"""
         try:

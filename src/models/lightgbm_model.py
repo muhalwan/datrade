@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Optional
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
@@ -7,17 +7,20 @@ import joblib
 import json
 import os
 from datetime import datetime
+from sklearn.model_selection import TimeSeriesSplit
 
 from .base import BaseModel, ModelConfig
 
 class LightGBMModel(BaseModel):
+    """Enhanced LightGBM model for time series prediction"""
+
     def __init__(self, config: ModelConfig):
         super().__init__(config)
-        # Default parameters with advanced settings
+        # Default parameters
         self.params = {
             'objective': 'huber',
             'metric': 'rmse',
-            'boosting_type': 'dart',
+            'boosting_type': 'gbdt',
             'num_leaves': 31,
             'learning_rate': 0.01,
             'feature_fraction': 0.8,
@@ -27,7 +30,8 @@ class LightGBMModel(BaseModel):
             'max_depth': 6,
             'num_threads': 4,
             'deterministic': True,
-            'verbosity': -1
+            'verbosity': -1,
+            'early_stopping_rounds': 50
         }
         # Update with provided params
         self.params.update(config.params.get('lgb_params', {}))
@@ -36,22 +40,33 @@ class LightGBMModel(BaseModel):
         self.feature_importance = None
         self.logger = logging.getLogger(__name__)
         self.training_time = None
+        self.num_boost_round = config.params.get('num_boost_round', 1000)
+        self.early_stopping_rounds = config.params.get('early_stopping_rounds', 50)
+
+    def preprocess(self, df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
+        """Preprocess data for LightGBM"""
+        try:
+            # Select and clean features
+            feature_data = df[self.config.features].copy()
+            feature_data = feature_data.ffill().bfill()
+
+            # Get target variable
+            target_data = df[self.config.target]
+
+            return feature_data.values, target_data.values
+
+        except Exception as e:
+            self.logger.error(f"Error in preprocessing: {str(e)}")
+            raise
 
     def train(self, df: pd.DataFrame) -> None:
-        """Train LightGBM model with advanced features"""
+        """Train LightGBM model"""
         try:
             self.logger.info("Starting LightGBM training...")
             start_time = datetime.now()
 
             # Preprocess data
             X, y = self.preprocess(df)
-
-            # Setup cross-validation folds
-            from sklearn.model_selection import TimeSeriesSplit
-            cv = TimeSeriesSplit(
-                n_splits=self.config.params.get('n_splits', 5),
-                gap=self.config.params.get('cv_gap', 0)
-            )
 
             # Create training and validation splits
             train_size = int(len(X) * 0.8)
@@ -75,31 +90,8 @@ class LightGBMModel(BaseModel):
                 )
                 valid_sets = [val_data]
 
-            # Setup advanced parameters
-            self.params.update({
-                'objective': 'huber',  # More robust to outliers
-                'boosting_type': 'dart',  # Use DART boosting
-                'drop_rate': 0.1,
-                'max_drop': 50,
-                'skip_drop': 0.5,
-                'xgboost_dart_mode': True,
-                'uniform_drop': True,
-                'feature_fraction_bynode': 0.8,
-                'pos_bagging_fraction': 0.9,
-                'neg_bagging_fraction': 0.9,
-                'lambda_l1': 0.1,  # L1 regularization
-                'lambda_l2': 0.1,  # L2 regularization
-                'path_smooth': 0.1,  # Smoothing
-                'extra_trees': True,  # Use extremely randomized trees
-                'deterministic': True  # For reproducibility
-            })
-
             # Train model with callbacks
             callbacks = [
-                lgb.early_stopping(
-                    stopping_rounds=50,
-                    verbose=True
-                ),
                 lgb.log_evaluation(100),
                 self._create_custom_callback()
             ]
@@ -108,7 +100,7 @@ class LightGBMModel(BaseModel):
                 params=self.params,
                 train_set=train_data,
                 valid_sets=valid_sets,
-                num_boost_round=self.config.params.get('num_boost_round', 1000),
+                num_boost_round=self.num_boost_round,
                 callbacks=callbacks,
                 feature_name=self.config.features
             )
@@ -151,7 +143,6 @@ class LightGBMModel(BaseModel):
                 r2_score, mean_absolute_percentage_error
             )
 
-            # Basic metrics
             metrics = {
                 'mse': mean_squared_error(y_true, y_pred),
                 'rmse': np.sqrt(mean_squared_error(y_true, y_pred)),
@@ -164,10 +155,6 @@ class LightGBMModel(BaseModel):
             pred_direction = np.diff(y_pred) > 0
             true_direction = np.diff(y_true) > 0
             metrics['directional_accuracy'] = np.mean(pred_direction == true_direction)
-
-            # Custom metrics
-            metrics['bias'] = np.mean(y_pred - y_true)
-            metrics['variance'] = np.var(y_pred - y_true)
 
             return metrics
 
@@ -196,7 +183,7 @@ class LightGBMModel(BaseModel):
             self.logger.error(f"Error logging results: {str(e)}")
 
     def predict(self, df: pd.DataFrame) -> np.ndarray:
-        """Enhanced prediction with uncertainty estimation"""
+        """Make predictions"""
         try:
             if self.model is None:
                 raise ValueError("Model not trained")
@@ -204,7 +191,7 @@ class LightGBMModel(BaseModel):
             # Preprocess test data
             X, _ = self.preprocess(df)
 
-            # Make predictions with num_iteration
+            # Make predictions
             predictions = self.model.predict(
                 X,
                 num_iteration=self.model.best_iteration
@@ -217,7 +204,7 @@ class LightGBMModel(BaseModel):
             raise
 
     def save(self, path: str) -> None:
-        """Enhanced model saving with metadata"""
+        """Save model and artifacts"""
         try:
             os.makedirs(path, exist_ok=True)
 
@@ -245,48 +232,55 @@ class LightGBMModel(BaseModel):
             self.logger.error(f"Error saving model: {str(e)}")
             raise
 
-    def get_feature_importance(self, importance_type: str = 'split') -> pd.Series:
-        """Get feature importance with different metrics"""
+    def load(self, path: str) -> None:
+        """Load model and artifacts"""
         try:
-            if self.model is None:
-                raise ValueError("Model not trained")
+            model_path = f"{path}/model.txt"
+            config_path = f"{path}/config.json"
 
-            importance = self.model.feature_importance(importance_type=importance_type)
-            return pd.Series(
-                importance,
-                index=self.config.features
-            ).sort_values(ascending=False)
+            if not all(os.path.exists(p) for p in [model_path, config_path]):
+                raise FileNotFoundError(f"Model files not found in {path}")
+
+            # Load model
+            self.model = lgb.Booster(model_file=model_path)
+
+            # Load configuration
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                self.params = config['params']
+                self.config.features = config['features']
+                self.training_time = config['training_time']
+
+            # Load feature importance if available
+            importance_path = f"{path}/feature_importance.csv"
+            if os.path.exists(importance_path):
+                self.feature_importance = pd.read_csv(importance_path)
+
+            self.logger.info(f"Model loaded from {path}")
 
         except Exception as e:
-            self.logger.error(f"Error getting feature importance: {str(e)}")
+            self.logger.error(f"Error loading model: {str(e)}")
             raise
 
     def cross_validate(self, df: pd.DataFrame, num_folds: int = 5) -> Dict:
-        """Perform cross-validation"""
+        """Perform time series cross-validation"""
         try:
             X, y = self.preprocess(df)
-
-            # Setup CV splitter
-            from sklearn.model_selection import TimeSeriesSplit
             cv = TimeSeriesSplit(n_splits=num_folds)
 
-            # Store results
             cv_scores = {
                 'train_score': [],
                 'val_score': [],
                 'feature_importance': []
             }
 
-            # Perform CV
             for fold, (train_idx, val_idx) in enumerate(cv.split(X), 1):
                 X_train, X_val = X[train_idx], X[val_idx]
                 y_train, y_val = y[train_idx], y[val_idx]
 
-                # Create datasets
                 train_data = lgb.Dataset(X_train, label=y_train)
                 val_data = lgb.Dataset(X_val, label=y_val)
 
-                # Train model
                 model = lgb.train(
                     self.params,
                     train_data,
@@ -296,15 +290,17 @@ class LightGBMModel(BaseModel):
                     verbose_eval=False
                 )
 
-                # Store scores
                 cv_scores['train_score'].append(model.best_score['training']['rmse'])
                 cv_scores['val_score'].append(model.best_score['valid_1']['rmse'])
                 cv_scores['feature_importance'].append(
                     pd.Series(model.feature_importance(), index=self.config.features)
                 )
 
-                self.logger.info(f"Fold {fold} - Train RMSE: {cv_scores['train_score'][-1]:.4f}, "
-                                 f"Val RMSE: {cv_scores['val_score'][-1]:.4f}")
+                self.logger.info(
+                    f"Fold {fold} - "
+                    f"Train RMSE: {cv_scores['train_score'][-1]:.4f}, "
+                    f"Val RMSE: {cv_scores['val_score'][-1]:.4f}"
+                )
 
             # Calculate aggregate metrics
             cv_results = {
@@ -312,69 +308,20 @@ class LightGBMModel(BaseModel):
                 'std_train_score': np.std(cv_scores['train_score']),
                 'mean_val_score': np.mean(cv_scores['val_score']),
                 'std_val_score': np.std(cv_scores['val_score']),
-                'feature_importance': pd.concat(cv_scores['feature_importance'], axis=1).mean(axis=1)
+                'feature_importance': pd.concat(
+                    cv_scores['feature_importance'],
+                    axis=1
+                ).mean(axis=1)
             }
 
-            self.logger.info("\nCross-validation results:")
-            self.logger.info(f"Mean train RMSE: {cv_results['mean_train_score']:.4f} ± {cv_results['std_train_score']:.4f}")
-            self.logger.info(f"Mean val RMSE: {cv_results['mean_val_score']:.4f} ± {cv_results['std_val_score']:.4f}")
+            self.logger.info(
+                f"\nCV Results - "
+                f"Mean Train RMSE: {cv_results['mean_train_score']:.4f} ± {cv_results['std_train_score']:.4f}, "
+                f"Mean Val RMSE: {cv_results['mean_val_score']:.4f} ± {cv_results['std_val_score']:.4f}"
+            )
 
             return cv_results
 
         except Exception as e:
             self.logger.error(f"Error in cross-validation: {str(e)}")
-            raise
-
-    def optimize_hyperparameters(self, df: pd.DataFrame, num_trials: int = 100) -> Dict:
-        """Optimize hyperparameters using Optuna"""
-        try:
-            import optuna
-
-            X, y = self.preprocess(df)
-            train_size = int(len(X) * 0.8)
-            X_train, X_val = X[:train_size], X[train_size:]
-            y_train, y_val = y[:train_size], y[train_size:]
-
-            def objective(trial):
-                param = {
-                    'objective': 'regression',
-                    'metric': 'rmse',
-                    'num_leaves': trial.suggest_int('num_leaves', 15, 127),
-                    'learning_rate': trial.suggest_loguniform('learning_rate', 0.001, 0.1),
-                    'feature_fraction': trial.suggest_uniform('feature_fraction', 0.4, 1.0),
-                    'bagging_fraction': trial.suggest_uniform('bagging_fraction', 0.4, 1.0),
-                    'bagging_freq': trial.suggest_int('bagging_freq', 1, 7),
-                    'min_data_in_leaf': trial.suggest_int('min_data_in_leaf', 5, 50),
-                    'max_depth': trial.suggest_int('max_depth', 3, 8)
-                }
-
-                train_data = lgb.Dataset(X_train, label=y_train)
-                val_data = lgb.Dataset(X_val, label=y_val)
-
-                model = lgb.train(
-                    param,
-                    train_data,
-                    valid_sets=[val_data],
-                    num_boost_round=self.num_boost_round,
-                    early_stopping_rounds=self.early_stopping_rounds,
-                    verbose_eval=False
-                )
-
-                return model.best_score['valid_0']['rmse']
-
-            # Run optimization
-            study = optuna.create_study(direction='minimize')
-            study.optimize(objective, n_trials=num_trials)
-
-            # Log results
-            self.logger.info("\nHyperparameter optimization results:")
-            self.logger.info(f"Best RMSE: {study.best_value:.4f}")
-            self.logger.info("Best hyperparameters:")
-            for key, value in study.best_params.items():
-                self.logger.info(f"{key}: {value}")
-
-            return study.best_params
-
-        except Exception as e:
-            self.logger.error(f"Error in hyperparameter optimization: {str(e)}")
             raise

@@ -1,16 +1,15 @@
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import joblib
 import json
 import os
-from typing import Dict, List, Optional, Tuple, Union
 from collections import deque
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 import time
-from datetime import datetime, timedelta
+
 from .base import BaseModel, ModelConfig
 from .lstm_model import LSTMModel
 from .lightgbm_model import LightGBMModel
@@ -42,6 +41,42 @@ class EnsembleModel(BaseModel):
             'directional': deque(maxlen=100)
         }
 
+    def add_model(self, name: str, model: BaseModel, weight: float = 1.0) -> None:
+        """Add a model to the ensemble"""
+        try:
+            if not isinstance(model, BaseModel):
+                raise ValueError(f"Model {name} must be a BaseModel instance")
+
+            if not isinstance(weight, (int, float)) or weight < 0:
+                raise ValueError(f"Weight for model {name} must be non-negative")
+
+            self.models[name] = model
+            self.weights[name] = weight
+            self.normalize_weights()
+
+            self.logger.info(f"Added model {name} with weight {weight:.3f}")
+            self.logger.info(f"Current weights: {self.weights}")
+
+        except Exception as e:
+            self.logger.error(f"Error adding model {name}: {str(e)}")
+            raise
+
+    def normalize_weights(self) -> None:
+        """Normalize weights to sum to 1"""
+        try:
+            total = sum(self.weights.values())
+            if total <= 0:
+                raise ValueError("Sum of weights must be positive")
+
+            self.weights = {
+                name: weight/total
+                for name, weight in self.weights.items()
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error normalizing weights: {str(e)}")
+            raise
+
     def calculate_model_performance(self, model_name: str,
                                     predictions: np.ndarray,
                                     actuals: np.ndarray) -> Dict[str, float]:
@@ -60,10 +95,11 @@ class EnsembleModel(BaseModel):
             directional_accuracy = np.mean(pred_direction == actual_direction)
 
             # Calculate weighted error score
-            # Lower is better
-            error_score = (0.4 * mse / np.std(actuals) +
-                           0.3 * mae / np.mean(np.abs(actuals)) +
-                           0.3 * (1 - directional_accuracy))
+            error_score = (
+                    0.4 * mse / np.std(actuals) +
+                    0.3 * mae / np.mean(np.abs(actuals)) +
+                    0.3 * (1 - directional_accuracy)
+            )
 
             return {
                 'mse': mse,
@@ -76,8 +112,8 @@ class EnsembleModel(BaseModel):
             self.logger.error(f"Error calculating performance for {model_name}: {str(e)}")
             return {}
 
-    def update_weights_dynamically(self, recent_performances: Dict[str, Dict[str, float]]):
-        """Update model weights based on recent performance"""
+    def update_weights_dynamically(self, recent_performances: Dict[str, Dict[str, float]]) -> None:
+        """Update weights based on recent performance"""
         try:
             if not recent_performances:
                 return
@@ -95,7 +131,7 @@ class EnsembleModel(BaseModel):
             # Convert errors to weights (lower error = higher weight)
             max_error = max(error_scores.values())
             inv_errors = {
-                name: (max_error - error + 1e-6)  # Add small constant to avoid division by zero
+                name: (max_error - error + 1e-6)
                 for name, error in error_scores.items()
             }
 
@@ -123,8 +159,27 @@ class EnsembleModel(BaseModel):
         except Exception as e:
             self.logger.error(f"Error updating weights: {str(e)}")
 
+    def preprocess(self, df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
+        """Preprocess data for ensemble"""
+        try:
+            # Use first model's preprocessing as reference
+            if not self.models:
+                raise ValueError("No models in ensemble")
+
+            first_model = next(iter(self.models.values()))
+            return first_model.preprocess(df)
+
+        except Exception as e:
+            self.logger.error(f"Error in preprocessing: {str(e)}")
+            raise
+
+    def train(self, df: pd.DataFrame) -> None:
+        """Ensemble doesn't need training as it uses trained models"""
+        self.logger.info("Ensemble model uses pre-trained models")
+        pass
+
     def predict(self, df: pd.DataFrame) -> np.ndarray:
-        """Enhanced prediction with dynamic weighting"""
+        """Make ensemble predictions with dynamic weighting"""
         try:
             if not self.models:
                 raise ValueError("No models in ensemble")
@@ -148,10 +203,10 @@ class EnsembleModel(BaseModel):
                     }
 
                     # Calculate performance if we have actual values
-                    if 'close' in df.columns:
+                    if self.config.target in df.columns:
                         perf = self.calculate_model_performance(
                             name, pred[-self.performance_window:],
-                            df['close'].values[-self.performance_window:]
+                            df[self.config.target].values[-self.performance_window:]
                         )
                         performances[name] = perf
 
@@ -211,9 +266,11 @@ class EnsembleModel(BaseModel):
             }
 
             for name in self.models:
-                model_perfs = [h['performances'].get(name, {})
-                               for h in recent_history
-                               if 'performances' in h]
+                model_perfs = [
+                    h['performances'].get(name, {})
+                    for h in recent_history
+                    if 'performances' in h
+                ]
 
                 if model_perfs:
                     diagnostics['model_performances'][name] = {
@@ -221,7 +278,6 @@ class EnsembleModel(BaseModel):
                         for metric in ['mse', 'mae', 'directional_accuracy']
                     }
 
-                # Get prediction times
                 if name in self.prediction_cache:
                     diagnostics['prediction_times'][name] = \
                         self.prediction_cache[name]['prediction_time']
@@ -233,19 +289,70 @@ class EnsembleModel(BaseModel):
             return {}
 
     def save(self, path: str) -> None:
-        """Enhanced save with diagnostics"""
+        """Save ensemble model and its components"""
         try:
             super().save(path)
 
-            # Save additional diagnostic information
-            diagnostics_path = os.path.join(path, 'diagnostics.json')
-            diagnostics = self.get_model_diagnostics()
+            # Save ensemble specific configuration
+            config = {
+                'weights': self.weights,
+                'model_configs': {
+                    name: model.config.to_dict()
+                    for name, model in self.models.items()
+                }
+            }
 
-            with open(diagnostics_path, 'w') as f:
-                json.dump(diagnostics, f, indent=4, default=str)
+            config_path = os.path.join(path, 'ensemble_config.json')
+            with open(config_path, 'w') as f:
+                json.dump(config, f, indent=4)
 
-            self.logger.info(f"Saved ensemble diagnostics to {diagnostics_path}")
+            # Save prediction history
+            history_path = os.path.join(path, 'prediction_history.pkl')
+            joblib.dump(self.prediction_history[-1000:], history_path)
+
+            # Save component models
+            for name, model in self.models.items():
+                model_path = os.path.join(path, name)
+                model.save(model_path)
+
+            self.logger.info(f"Ensemble model saved to {path}")
 
         except Exception as e:
-            self.logger.error(f"Error saving ensemble diagnostics: {str(e)}")
+            self.logger.error(f"Error saving ensemble: {str(e)}")
+            raise
+
+    def load(self, path: str) -> None:
+        """Load ensemble model and its components"""
+        try:
+            config_path = os.path.join(path, 'ensemble_config.json')
+            if not os.path.exists(config_path):
+                raise FileNotFoundError(f"Config not found at {config_path}")
+
+            # Load configuration
+            with open(config_path) as f:
+                config = json.load(f)
+                self.weights = config['weights']
+
+            # Load component models
+            for name, model_config in config['model_configs'].items():
+                model_path = os.path.join(path, name)
+                if model_config['type'] == 'lstm':
+                    model = LSTMModel(ModelConfig(**model_config))
+                elif model_config['type'] == 'lightgbm':
+                    model = LightGBMModel(ModelConfig(**model_config))
+                else:
+                    continue
+
+                model.load(model_path)
+                self.models[name] = model
+
+            # Load prediction history
+            history_path = os.path.join(path, 'prediction_history.pkl')
+            if os.path.exists(history_path):
+                self.prediction_history = joblib.load(history_path)
+
+            self.logger.info(f"Ensemble model loaded from {path}")
+
+        except Exception as e:
+            self.logger.error(f"Error loading ensemble: {str(e)}")
             raise

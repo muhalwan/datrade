@@ -7,8 +7,13 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import os
 import yaml
-from typing import Dict
+from typing import Dict, Optional
 import pandas as pd
+import numpy as np
+from concurrent.futures import ThreadPoolExecutor
+import threading
+from queue import Queue
+import json
 
 from src.config import settings
 from src.data.database.connection import MongoDBConnection
@@ -16,199 +21,310 @@ from src.features.engineering import FeatureEngineering
 from src.models.training import ModelTrainer
 from src.monitoring.metrics import PerformanceMonitor
 
-# Suppress TensorFlow warnings
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+class MLPipeline:
+    """Enhanced ML Pipeline Coordinator"""
 
-def setup_logging():
-    """Setup logging configuration"""
-    log_dir = Path("logs/training")
-    log_dir.mkdir(parents=True, exist_ok=True)
+    def __init__(self):
+        self.logger = self._setup_logging()
+        self.db = None
+        self.monitor = None
+        self.trainer = None
+        self.feature_eng = None
+        self.running = True
+        self.training_queue = Queue()
+        self.results_cache = {}
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = log_dir / f"training_{timestamp}.log"
+        # Setup signal handlers
+        signal.signal(signal.SIGINT, self.handle_shutdown)
+        signal.signal(signal.SIGTERM, self.handle_shutdown)
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler()
-        ]
-    )
+    def _setup_logging(self) -> logging.Logger:
+        """Setup enhanced logging configuration"""
+        log_dir = Path("logs/training")
+        log_dir.mkdir(parents=True, exist_ok=True)
 
-    return logging.getLogger(__name__)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_file = log_dir / f"training_{timestamp}.log"
 
-def load_model_config() -> Dict:
-    """Load model configuration"""
-    config_path = Path("config/model_config.yaml")
-    if not config_path.exists():
-        raise FileNotFoundError("Model configuration file not found")
+        # Create formatter
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
 
-    with open(config_path) as f:
-        return yaml.safe_load(f)
+        # Setup file handler
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(formatter)
+        file_handler.setLevel(logging.INFO)
 
-def fetch_training_data(db: MongoDBConnection, symbol: str,
-                        start_time: datetime, end_time: datetime) -> pd.DataFrame:
-    """Fetch historical data for training"""
-    try:
-        collection = db.get_collection('price_data')
+        # Setup console handler
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        console_handler.setLevel(logging.INFO)
 
-        # Fetch data with MongoDB aggregation
-        pipeline = [
-            {
-                '$match': {
-                    'symbol': symbol,
-                    'timestamp': {
-                        '$gte': start_time,
-                        '$lte': end_time
+        # Setup logger
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(file_handler)
+        logger.addHandler(console_handler)
+
+        return logger
+
+    def handle_shutdown(self, signum, frame):
+        """Handle graceful shutdown"""
+        self.logger.info("\nShutdown signal received. Cleaning up...")
+        self.running = False
+        self.cleanup()
+        sys.exit(0)
+
+    def initialize_components(self) -> bool:
+        """Initialize all components with validation"""
+        try:
+            # Initialize monitoring
+            self.monitor = PerformanceMonitor()
+            self.monitor.start_monitoring()
+
+            # Load configurations
+            self.logger.info("Loading configurations...")
+            self.model_config = self._load_model_config()
+
+            # Initialize database
+            self.logger.info("Connecting to database...")
+            self.db = MongoDBConnection({
+                'connection_string': settings.mongodb_uri,
+                'name': settings.db_name
+            })
+
+            if not self.db.connect():
+                self.logger.error("Failed to connect to database")
+                return False
+
+            # Initialize components
+            self.feature_eng = FeatureEngineering(self.db)
+            self.trainer = ModelTrainer(self.db)
+
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Initialization error: {str(e)}")
+            return False
+
+    def _load_model_config(self) -> Dict:
+        """Load model configuration with validation"""
+        config_path = Path("config/model_config.yaml")
+        if not config_path.exists():
+            raise FileNotFoundError("Model configuration file not found")
+
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+
+        # Validate configuration
+        required_fields = ['training_days', 'models', 'features']
+        if not all(field in config for field in required_fields):
+            raise ValueError("Invalid model configuration")
+
+        return config
+
+    def fetch_training_data(self, symbol: str, start_time: datetime, end_time: datetime) -> pd.DataFrame:
+        """Fetch and validate training data"""
+        try:
+            collection = self.db.get_collection('price_data')
+
+            pipeline = [
+                {
+                    '$match': {
+                        'symbol': symbol,
+                        'timestamp': {
+                            '$gte': start_time,
+                            '$lte': end_time
+                        }
                     }
+                },
+                {
+                    '$sort': {'timestamp': 1}
                 }
-            },
-            {
-                '$sort': {'timestamp': 1}
-            },
-            {
-                '$project': {
-                    '_id': 0,
-                    'timestamp': 1,
-                    'price': 1,
-                    'quantity': 1,
-                    'is_buyer_maker': 1
-                }
-            }
-        ]
+            ]
 
-        data = list(collection.aggregate(pipeline))
-        df = pd.DataFrame(data)
+            data = list(collection.aggregate(pipeline))
 
-        if df.empty:
+            if not data:
+                self.logger.warning(f"No data found for {symbol}")
+                return pd.DataFrame()
+
+            # Convert to DataFrame
+            df = pd.DataFrame(data)
+
+            # Validate required columns
+            required_columns = ['timestamp', 'price', 'quantity']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                self.logger.error(f"Missing required columns: {missing_columns}")
+                return pd.DataFrame()
+
+            # Convert timestamp
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+            # Ensure numeric types
+            df['price'] = pd.to_numeric(df['price'], errors='coerce')
+            df['quantity'] = pd.to_numeric(df['quantity'], errors='coerce')
+
+            # Remove any invalid data
+            df = df.dropna(subset=['price', 'quantity'])
+
+            # Validate data quality
+            df = self._validate_data_quality(df)
+
+            self.logger.info(f"Fetched {len(df)} data points with columns: {df.columns.tolist()}")
+            return df
+
+        except Exception as e:
+            self.logger.error(f"Error fetching data: {str(e)}")
             return pd.DataFrame()
 
-        # Convert to OHLCV format
-        df.set_index('timestamp', inplace=True)
-        ohlcv = pd.DataFrame()
-        ohlcv['open'] = df['price'].resample('1Min').first()
-        ohlcv['high'] = df['price'].resample('1Min').max()
-        ohlcv['low'] = df['price'].resample('1Min').min()
-        ohlcv['close'] = df['price'].resample('1Min').last()
-        ohlcv['volume'] = df['quantity'].resample('1Min').sum()
+    def _validate_data_quality(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Validate and clean data quality"""
+        try:
+            # Remove duplicates
+            df = df.drop_duplicates(subset=['timestamp'])
 
-        return ohlcv.dropna()
+            # Sort by timestamp
+            df = df.sort_values('timestamp')
 
-    except Exception as e:
-        logging.getLogger(__name__).error(f"Error fetching data: {str(e)}")
-        return pd.DataFrame()
+            # Check for gaps
+            timestamps = pd.to_datetime(df['timestamp'])
+            gaps = timestamps.diff() > timedelta(minutes=5)  # Adjust threshold as needed
+            if gaps.any():
+                self.logger.warning(f"Found {gaps.sum()} gaps in data")
+
+            # Check for outliers in price and quantity
+            for col in ['price', 'quantity']:
+                if col in df.columns:
+                    z_scores = np.abs((df[col] - df[col].mean()) / df[col].std())
+                    outliers = z_scores > 3
+                    if outliers.any():
+                        self.logger.warning(f"Found {outliers.sum()} outliers in {col}")
+                        # Optionally remove extreme outliers
+                        df = df[z_scores < 5]  # Remove extreme outliers (z-score > 5)
+
+            return df
+
+        except Exception as e:
+            self.logger.error(f"Error validating data: {str(e)}")
+            return df
+
+    def process_symbol(self, symbol: str) -> Dict:
+        """Process individual symbol"""
+        try:
+            self.logger.info(f"\nProcessing {symbol}")
+
+            # Get training period
+            end_time = datetime.now()
+            days_back = self.model_config.get('training_days', 30)
+            start_time = end_time - timedelta(days=days_back)
+
+            self.logger.info(f"Training period: {start_time} to {end_time}")
+
+            # Fetch and validate data
+            df = self.fetch_training_data(symbol, start_time, end_time)
+            if df.empty:
+                return {'status': 'error', 'message': 'No data available'}
+
+            self.logger.info(f"Fetched {len(df)} data points")
+
+            # Generate features
+            features_df = self.feature_eng.generate_features(df)
+            if features_df.empty:
+                return {'status': 'error', 'message': 'Feature generation failed'}
+
+            self.logger.info(f"Generated features shape: {features_df.shape}")
+
+            # Train/test split
+            split_point = int(len(features_df) * 0.8)
+            train_df = features_df[:split_point].copy()
+            test_df = features_df[split_point:].copy()
+
+            self.logger.info(f"Training set: {len(train_df)}, Test set: {len(test_df)}")
+
+            # Train models
+            self.logger.info("Training models...")
+            models = self.trainer.train(symbol, train_df, test_df)
+
+            # Save models
+            self.logger.info("Saving models...")
+            self.trainer.save_models(models, symbol)
+
+            # Get metrics
+            metrics = self.trainer.get_model_metrics(symbol)
+
+            return {
+                'status': 'success',
+                'metrics': metrics,
+                'timestamp': datetime.now().isoformat()
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error processing {symbol}: {str(e)}")
+            return {'status': 'error', 'message': str(e)}
+
+    def cleanup(self):
+        """Cleanup resources"""
+        if self.monitor:
+            self.monitor.stop_monitoring()
+        if self.db:
+            self.db.close()
+        self.logger.info("Cleanup complete")
+
+    def run(self):
+        """Main execution pipeline"""
+        try:
+            if not self.initialize_components():
+                return
+
+            results = {}
+            with ThreadPoolExecutor(max_workers=len(settings.trading_symbols)) as executor:
+                future_to_symbol = {
+                    executor.submit(self.process_symbol, symbol): symbol
+                    for symbol in settings.trading_symbols
+                }
+
+                for future in future_to_symbol:
+                    symbol = future_to_symbol[future]
+                    try:
+                        result = future.result()
+                        results[symbol] = result
+                    except Exception as e:
+                        self.logger.error(f"Error processing {symbol}: {str(e)}")
+
+            # Save results
+            self._save_results(results)
+
+        except KeyboardInterrupt:
+            self.logger.info("\nTraining interrupted by user")
+        except Exception as e:
+            self.logger.error(f"Training error: {str(e)}")
+        finally:
+            self.cleanup()
+
+    def _save_results(self, results: Dict):
+        """Save training results"""
+        try:
+            results_dir = Path("logs/results")
+            results_dir.mkdir(parents=True, exist_ok=True)
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            results_path = results_dir / f"training_results_{timestamp}.json"
+
+            with open(results_path, 'w') as f:
+                json.dump(results, f, indent=4)
+
+            self.logger.info(f"Results saved to {results_path}")
+
+        except Exception as e:
+            self.logger.error(f"Error saving results: {str(e)}")
 
 def main():
-    logger = setup_logging()
-    db = None
-    monitor = None
-
-    try:
-        # Initialize monitoring
-        monitor = PerformanceMonitor()
-        monitor.start_monitoring()
-
-        # Load configurations
-        logger.info("Loading configurations...")
-        model_config = load_model_config()
-
-        # Initialize database
-        logger.info("Connecting to database...")
-        db = MongoDBConnection({
-            'connection_string': settings.mongodb_uri,
-            'name': settings.db_name
-        })
-
-        if not db.connect():
-            logger.error("Failed to connect to database. Exiting...")
-            return
-
-        # Initialize components
-        feature_eng = FeatureEngineering(db)
-        trainer = ModelTrainer(db)
-
-        # Process each symbol
-        for symbol in settings.trading_symbols:
-            logger.info(f"\nProcessing {symbol}")
-
-            try:
-                # Get training period
-                end_time = datetime.now()
-                days_back = model_config.get('training_days', 30)
-                start_time = end_time - timedelta(days=days_back)
-
-                logger.info(f"Training period: {start_time} to {end_time}")
-
-                # Fetch training data
-                df = fetch_training_data(db, symbol, start_time, end_time)
-
-                if df.empty:
-                    logger.warning(f"No historical data found for {symbol}")
-                    continue
-
-                logger.info(f"Fetched {len(df)} data points")
-
-                # Generate features
-                features_df = feature_eng.generate_features(df)
-
-                if features_df.empty:
-                    logger.warning(f"No features generated for {symbol}")
-                    continue
-
-                logger.info(f"Generated features shape: {features_df.shape}")
-
-                # Train/test split
-                split_point = int(len(features_df) * 0.8)
-                train_df = features_df[:split_point].copy()
-                test_df = features_df[split_point:].copy()
-
-                logger.info(f"Training set: {len(train_df)}, Test set: {len(test_df)}")
-
-                # Train models
-                logger.info("Training models...")
-
-                try:
-                    models = trainer.train(
-                        symbol=symbol,
-                        train_data=train_df,
-                        test_data=test_df
-                    )
-
-                    # Create models directory
-                    models_dir = Path("models")
-                    models_dir.mkdir(exist_ok=True)
-
-                    # Save models
-                    logger.info("Saving models...")
-                    trainer.save_models(models, symbol)
-
-                    # Log performance metrics
-                    for name, metrics in trainer.get_model_metrics(symbol).items():
-                        logger.info(f"\nMetrics for {name}:")
-                        for metric, value in metrics.items():
-                            logger.info(f"{metric}: {value:.4f}")
-
-                except Exception as e:
-                    logger.error(f"Error in model training: {str(e)}")
-                    continue
-
-                logger.info(f"Successfully completed processing for {symbol}")
-
-            except Exception as e:
-                logger.error(f"Error processing {symbol}: {str(e)}")
-                continue
-
-    except KeyboardInterrupt:
-        logger.info("\nTraining interrupted by user")
-    except Exception as e:
-        logger.error(f"Training error: {str(e)}")
-    finally:
-        if monitor:
-            monitor.stop_monitoring()
-        if db:
-            db.close()
-        logger.info("Training complete")
+    """Main entry point"""
+    pipeline = MLPipeline()
+    pipeline.run()
 
 if __name__ == "__main__":
     main()

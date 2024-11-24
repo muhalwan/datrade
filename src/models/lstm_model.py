@@ -1,3 +1,4 @@
+from pathlib import Path
 import logging
 from typing import Tuple, Optional
 import numpy as np
@@ -10,9 +11,9 @@ import os
 from tensorflow.keras.layers import (
     LSTM, Dense, Dropout, BatchNormalization, Input,
     Bidirectional, MultiHeadAttention, LayerNormalization,
-    GlobalAveragePooling1D, TimeDistributed
+    GlobalAveragePooling1D
 )
-
+from tensorflow.keras.optimizers import AdamW
 from .base import BaseModel, ModelConfig
 
 class LSTMModel(BaseModel):
@@ -42,10 +43,9 @@ class LSTMModel(BaseModel):
     def build_model(self, input_shape: tuple) -> Sequential:
         """Build advanced LSTM architecture with attention"""
         try:
-            # Input shape is (sequence_length, n_features)
             inputs = Input(shape=input_shape)
 
-            # First Bidirectional LSTM layer
+            # First LSTM layer with bidirectional wrapper
             x = Bidirectional(LSTM(128, return_sequences=True))(inputs)
             x = BatchNormalization()(x)
             x = Dropout(0.3)(x)
@@ -53,19 +53,17 @@ class LSTMModel(BaseModel):
             # Self-attention mechanism
             attention = MultiHeadAttention(
                 num_heads=4,
-                key_dim=32,
+                key_dim=32
             )(x, x)
-            x = LayerNormalization()(attention + x)  # Skip connection
+            x = LayerNormalization()(attention + x)
 
-            # Second Bidirectional LSTM layer
+            # Second LSTM layer
             x = Bidirectional(LSTM(64, return_sequences=True))(x)
             x = BatchNormalization()(x)
             x = Dropout(0.2)(x)
 
-            # Global pooling to reduce sequence dimension
+            # Global pooling and dense layers
             x = GlobalAveragePooling1D()(x)
-
-            # Dense layers for final processing
             x = Dense(64, activation='relu')(x)
             x = BatchNormalization()(x)
             x = Dropout(0.2)(x)
@@ -73,15 +71,13 @@ class LSTMModel(BaseModel):
             x = Dense(32, activation='relu')(x)
             x = BatchNormalization()(x)
 
-            # Output layer
             outputs = Dense(1)(x)
 
             model = tf.keras.Model(inputs=inputs, outputs=outputs)
 
-            # Compile with AdamW optimizer and Huber loss
             optimizer = AdamW(
-                learning_rate=self.config.params.get('learning_rate', 0.001),
-                weight_decay=self.config.params.get('weight_decay', 0.004)
+                learning_rate=self.learning_rate,
+                weight_decay=self.weight_decay
             )
 
             model.compile(
@@ -96,7 +92,7 @@ class LSTMModel(BaseModel):
             raise
 
     def _create_sequences(self, data: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """Create sequences efficiently"""
+        """Create sequences for LSTM"""
         total_samples = len(data) - self.sequence_length
 
         X = np.zeros((total_samples, self.sequence_length, data.shape[1]))
@@ -104,17 +100,17 @@ class LSTMModel(BaseModel):
 
         for i in range(total_samples):
             X[i] = data[i:(i + self.sequence_length)]
-            y[i] = data[i + self.sequence_length, 0]  # Predict next close price
+            y[i] = data[i + self.sequence_length, 0]
 
         self.logger.info(f"Created sequences - X shape: {X.shape}, y shape: {y.shape}")
         return X, y
 
     def preprocess(self, df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
-        """Preprocess data efficiently"""
+        """Preprocess data for LSTM"""
         try:
             self.logger.info(f"Preprocessing data of shape: {df.shape}")
 
-            # Select and clean features
+            # Select features and clean
             feature_data = df[self.config.features].copy()
             feature_data = feature_data.ffill().bfill()
 
@@ -127,7 +123,6 @@ class LSTMModel(BaseModel):
             # Create sequences
             X, y = self._create_sequences(features_scaled)
 
-            # Verify data
             if len(X) == 0 or len(y) == 0:
                 raise ValueError("Insufficient data for sequence creation")
 
@@ -138,7 +133,7 @@ class LSTMModel(BaseModel):
             raise
 
     def train(self, df: pd.DataFrame) -> None:
-        """Train LSTM model with optimizations"""
+        """Train LSTM model"""
         try:
             self.logger.info("Starting LSTM model training...")
             start_time = pd.Timestamp.now()
@@ -156,14 +151,12 @@ class LSTMModel(BaseModel):
 
             # Setup callbacks
             callbacks = [
-                # Early stopping with restore
                 tf.keras.callbacks.EarlyStopping(
                     monitor='val_loss',
                     patience=15,
                     restore_best_weights=True,
                     mode='min'
                 ),
-                # Learning rate reduction
                 tf.keras.callbacks.ReduceLROnPlateau(
                     monitor='val_loss',
                     factor=0.5,
@@ -172,22 +165,20 @@ class LSTMModel(BaseModel):
                     mode='min',
                     verbose=1
                 ),
-                # Model checkpoint
                 tf.keras.callbacks.ModelCheckpoint(
-                    filepath='models/temp/lstm_checkpoint',
+                    filepath=str(Path('models/temp/lstm_checkpoint.keras')),
                     save_best_only=True,
                     monitor='val_loss',
                     mode='min',
                     verbose=0
                 ),
-                # Tensorboard logging
                 tf.keras.callbacks.TensorBoard(
-                    log_dir=f'logs/tensorboard/lstm_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}',
+                    log_dir=str(self.tensorboard_dir / f'lstm_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}'),
                     histogram_freq=1
                 )
             ]
 
-            # Train model with gradient clipping
+            # Train model
             self.history = self.model.fit(
                 X, y,
                 epochs=self.epochs,
@@ -195,13 +186,10 @@ class LSTMModel(BaseModel):
                 validation_split=self.validation_split,
                 callbacks=callbacks,
                 verbose=1,
-                shuffle=False,  # Important for time series
-                clip_norm=1.0  # Gradient clipping
+                shuffle=False
             )
 
             self.training_time = (pd.Timestamp.now() - start_time).total_seconds()
-
-            # Log results
             self._log_training_results()
 
         except Exception as e:
@@ -209,29 +197,27 @@ class LSTMModel(BaseModel):
             raise
 
     def _log_training_results(self):
-        """Log training results and metrics"""
+        """Log training results"""
         try:
             self.logger.info(f"Training completed: {len(self.history.history['loss'])} epochs")
             self.logger.info(f"Final loss: {self.history.history['loss'][-1]:.4f}")
             self.logger.info(f"Final val_loss: {self.history.history['val_loss'][-1]:.4f}")
             self.logger.info(f"Training time: {self.training_time:.2f} seconds")
 
-            # Calculate additional metrics
             best_epoch = np.argmin(self.history.history['val_loss'])
             self.logger.info(f"Best epoch: {best_epoch + 1}")
             self.logger.info(f"Best val_loss: {self.history.history['val_loss'][best_epoch]:.4f}")
 
-            # Learning rate progression
             lr_history = self.history.history.get('lr', [])
             if lr_history:
                 self.logger.info(f"Initial LR: {lr_history[0]:.6f}")
                 self.logger.info(f"Final LR: {lr_history[-1]:.6f}")
 
         except Exception as e:
-            self.logger.error(f"Error logging training results: {str(e)}")
+            self.logger.error(f"Error logging results: {str(e)}")
 
     def predict(self, df: pd.DataFrame) -> np.ndarray:
-        """Make predictions with proper error handling"""
+        """Make predictions"""
         try:
             if self.model is None:
                 raise ValueError("Model not trained")
@@ -291,7 +277,7 @@ class LSTMModel(BaseModel):
             self.logger.info(f"Model saved to {path}")
 
         except Exception as e:
-            self.logger.error(f"Error saving LSTM model: {str(e)}")
+            self.logger.error(f"Error saving model: {str(e)}")
             raise
 
     def load(self, path: str) -> None:
@@ -318,5 +304,5 @@ class LSTMModel(BaseModel):
             self.logger.info(f"Model loaded from {path}")
 
         except Exception as e:
-            self.logger.error(f"Error loading LSTM model: {str(e)}")
+            self.logger.error(f"Error loading model: {str(e)}")
             raise

@@ -1,14 +1,11 @@
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 from datetime import datetime
-import numpy as np
 import pandas as pd
-import os
 import yaml
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from sklearn.model_selection import TimeSeriesSplit
-
 from src.features.engineering import FeatureEngineering
 from .base import BaseModel, ModelConfig, ModelType, ModelMetrics
 from .lstm_model import LSTMModel
@@ -24,6 +21,8 @@ class ModelTrainer:
         self.feature_eng = FeatureEngineering(self.db)
         self.models: Dict[str, BaseModel] = {}
         self.training_history: Dict[str, Dict] = {}
+
+        # Load configurations
         self.model_configs = self._load_model_configs()
 
         # Create necessary directories
@@ -45,6 +44,86 @@ class ModelTrainer:
         except Exception as e:
             self.logger.error(f"Error loading model configs: {str(e)}")
             return self._get_default_configs()
+
+    def _get_default_configs(self) -> Dict:
+        """Get default model configurations"""
+        return {
+            'lstm': ModelConfig(
+                name='lstm',
+                type=ModelType.LSTM,
+                params={
+                    'sequence_length': 10,
+                    'batch_size': 32,
+                    'epochs': 100,
+                    'learning_rate': 0.001,
+                    'weight_decay': 0.004
+                },
+                features=[
+                    'close', 'open', 'high', 'low', 'volume',
+                    'bb_high_20', 'bb_low_20',  # Updated BB names
+                    'rsi', 'macd', 'macd_signal',
+                    'volume_sma_30', 'volatility_30'
+                ],
+                target='close',
+                cross_validation=False,
+                cv_folds=5
+            ),
+            'lightgbm': ModelConfig(
+                name='lightgbm',
+                type=ModelType.LIGHTGBM,
+                params={
+                    'objective': 'huber',
+                    'metric': 'rmse',
+                    'num_leaves': 31,
+                    'learning_rate': 0.01,
+                    'feature_fraction': 0.8,
+                    'bagging_fraction': 0.8,
+                    'bagging_freq': 5,
+                    'early_stopping_rounds': 50
+                },
+                features=[
+                    'close', 'open', 'high', 'low', 'volume',
+                    'bb_high_20', 'bb_low_20',  # Updated BB names
+                    'rsi', 'macd', 'macd_signal',
+                    'volume_sma_30', 'volatility_30',
+                    'adx', 'mfi', 'williams_r'
+                ],
+                target='close',
+                cross_validation=True,
+                cv_folds=5
+            )
+        }
+
+    def _process_configs(self, config: Dict) -> Dict:
+        """Process raw config into ModelConfig objects"""
+        processed_configs = {}
+
+        if 'models' not in config:
+            self.logger.warning("No models section in config, using defaults")
+            return self._get_default_configs()
+
+        for name, model_config in config['models'].items():
+            if model_config.get('enabled', True):
+                try:
+                    processed_configs[name] = ModelConfig(
+                        name=name,
+                        type=ModelType[model_config['type'].upper()],
+                        params=model_config.get('params', {}),
+                        features=model_config.get('features', []),
+                        target='close',
+                        enabled=True,
+                        cross_validation=model_config.get('cross_validation', False),
+                        cv_folds=model_config.get('cv_folds', 5)
+                    )
+                except Exception as e:
+                    self.logger.error(f"Error processing config for {name}: {str(e)}")
+                    continue
+
+        if not processed_configs:
+            self.logger.warning("No valid model configs found, using defaults")
+            return self._get_default_configs()
+
+        return processed_configs
 
     def create_model(self, config: ModelConfig) -> BaseModel:
         """Create model instance with proper initialization"""
@@ -93,9 +172,11 @@ class ModelTrainer:
                 cv_results['val_metrics'].append(val_metrics)
                 cv_results['fold_times'].append(fold_time)
 
-                self.logger.info(f"Fold {fold} - "
-                                 f"Train RMSE: {train_metrics.rmse:.4f}, "
-                                 f"Val RMSE: {val_metrics.rmse:.4f}")
+                self.logger.info(
+                    f"Fold {fold} - "
+                    f"Train RMSE: {train_metrics.rmse:.4f}, "
+                    f"Val RMSE: {val_metrics.rmse:.4f}"
+                )
 
             return cv_results
 
@@ -105,7 +186,7 @@ class ModelTrainer:
 
     def train(self, symbol: str, train_data: pd.DataFrame,
               test_data: pd.DataFrame = None) -> Dict[str, BaseModel]:
-        """Enhanced training pipeline with parallel processing"""
+        """Train all models with parallel processing"""
         try:
             self.logger.info(f"Starting model training for {symbol}")
             trained_models = {}
@@ -197,7 +278,7 @@ class ModelTrainer:
             raise
 
     def save_models(self, models: Dict[str, BaseModel], symbol: str) -> None:
-        """Save models with enhanced metadata"""
+        """Save all models with metadata"""
         try:
             base_path = Path(f"models/{symbol}")
             base_path.mkdir(parents=True, exist_ok=True)
@@ -212,7 +293,7 @@ class ModelTrainer:
             raise
 
     def load_models(self, symbol: str) -> Dict[str, BaseModel]:
-        """Load models with validation"""
+        """Load all models for a symbol"""
         try:
             base_path = Path(f"models/{symbol}")
             if not base_path.exists():
@@ -239,7 +320,7 @@ class ModelTrainer:
             raise
 
     def get_model_metrics(self, symbol: str) -> Dict:
-        """Get comprehensive model metrics"""
+        """Get all model metrics"""
         try:
             metrics = {}
             for name, history in self.training_history.items():
