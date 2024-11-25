@@ -8,6 +8,7 @@ import json
 import os
 from datetime import datetime
 from sklearn.model_selection import TimeSeriesSplit
+from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 
 from .base import BaseModel, ModelConfig, ModelMetrics
 
@@ -15,22 +16,24 @@ from .base import BaseModel, ModelConfig, ModelMetrics
 class LightGBMModel(BaseModel):
     def __init__(self, config: ModelConfig):
         super().__init__(config)
-        # Update params for GPU
-        self.params.update({
+        self.logger = logging.getLogger(__name__)
+        # Initialize params dict first
+        self.params = {
+            'objective': 'huber',
+            'metric': 'rmse',
             'device': 'gpu',
             'gpu_platform_id': 0,
             'gpu_device_id': 0,
             'num_thread': 4,
-            'max_bin': 63,  # Reduced for GPU memory
-            'num_leaves': 31,  # Reduced for GPU memory
-            'force_row_wise': True  # More efficient for GPU
-        })
+            'max_bin': 63,
+            'num_leaves': 31,
+            'force_row_wise': True
+        }
         # Update with provided params
         self.params.update(config.params.get('lgb_params', {}))
 
         self.model = None
         self.feature_importance = None
-        self.logger = logging.getLogger(__name__)
         self.training_time = None
         self.num_boost_round = config.params.get('num_boost_round', 1000)
         self.early_stopping_rounds = config.params.get('early_stopping_rounds', 50)

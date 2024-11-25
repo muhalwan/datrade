@@ -33,6 +33,20 @@ def get_gpu_info():
         logger.error(f"Error getting GPU info: {e}")
         return {"available": False, "error": str(e)}
 
+def get_gpu_memory_info():
+    try:
+        result = subprocess.check_output(
+            ['nvidia-smi', '--query-gpu=memory.used,memory.total', '--format=csv,nounits,noheader'],
+            encoding='utf-8'
+        )
+        used, total = map(int, result.strip().split(','))
+        return {
+            'total_memory': total,
+            'used_memory': used
+        }
+    except:
+        return None
+
 def setup_gpu():
     """Configure GPU settings for optimal performance with 4GB VRAM"""
     try:

@@ -7,6 +7,7 @@ from enum import Enum
 from datetime import datetime
 import json
 import os
+import logging
 
 class ModelType(Enum):
     LSTM = "lstm"
@@ -76,6 +77,7 @@ class BaseModel(ABC):
         """Initialize model with configuration"""
         self.config = config
         self.model = None
+        self.logger = logging.getLogger(__name__)
         self.training_history: List[ModelMetrics] = []
         self.validation_history: List[ModelMetrics] = []
         self.feature_importance: Optional[pd.DataFrame] = None

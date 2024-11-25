@@ -11,6 +11,7 @@ from .base import BaseModel, ModelConfig, ModelType, ModelMetrics
 from .lstm_model import LSTMModel
 from .lightgbm_model import LightGBMModel
 from .ensemble import EnsembleModel
+import logging
 
 class ModelTrainer:
     """Enhanced model training coordinator"""

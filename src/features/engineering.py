@@ -153,13 +153,16 @@ class FeatureEngineering:
             return pd.DataFrame()
 
     def _calculate_price_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Calculate comprehensive price-based features"""
         try:
             features = pd.DataFrame(index=df.index)
 
-            # Calculate returns first
-            if 'returns' not in df.columns:
-                df['returns'] = df['close'].pct_change(fill_method=None)
+            # Ensure close column exists
+            if 'close' not in df.columns and 'price' in df.columns:
+                df['close'] = df['price']
+
+            # Calculate returns
+            features['returns'] = df['close'].pct_change()
+            features['log_returns'] = np.log1p(features['returns'].fillna(0))
 
             # Basic price features
             features['log_returns'] = np.log1p(df['returns'].fillna(0))
