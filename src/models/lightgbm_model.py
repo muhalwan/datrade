@@ -9,30 +9,22 @@ import os
 from datetime import datetime
 from sklearn.model_selection import TimeSeriesSplit
 
-from .base import BaseModel, ModelConfig
+from .base import BaseModel, ModelConfig, ModelMetrics
+
 
 class LightGBMModel(BaseModel):
-    """Enhanced LightGBM model for time series prediction"""
-
     def __init__(self, config: ModelConfig):
         super().__init__(config)
-        # Default parameters
-        self.params = {
-            'objective': 'huber',
-            'metric': 'rmse',
-            'boosting_type': 'gbdt',
-            'num_leaves': 31,
-            'learning_rate': 0.01,
-            'feature_fraction': 0.8,
-            'bagging_fraction': 0.8,
-            'bagging_freq': 5,
-            'min_data_in_leaf': 20,
-            'max_depth': 6,
-            'num_threads': 4,
-            'deterministic': True,
-            'verbosity': -1,
-            'early_stopping_rounds': 50
-        }
+        # Update params for GPU
+        self.params.update({
+            'device': 'gpu',
+            'gpu_platform_id': 0,
+            'gpu_device_id': 0,
+            'num_thread': 4,
+            'max_bin': 63,  # Reduced for GPU memory
+            'num_leaves': 31,  # Reduced for GPU memory
+            'force_row_wise': True  # More efficient for GPU
+        })
         # Update with provided params
         self.params.update(config.params.get('lgb_params', {}))
 
@@ -44,13 +36,25 @@ class LightGBMModel(BaseModel):
         self.early_stopping_rounds = config.params.get('early_stopping_rounds', 50)
 
     def preprocess(self, df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
-        """Preprocess data for LightGBM"""
+        """Preprocess data efficiently"""
         try:
+            self.logger.info(f"Preprocessing data of shape: {df.shape}")
+
+            # Verify all required features are present
+            missing_features = [f for f in self.config.features if f not in df.columns]
+            if missing_features:
+                self.logger.error(f"Missing features: {missing_features}")
+                self.logger.info("Available features:")
+                self.logger.info(", ".join(sorted(df.columns)))
+                raise ValueError(f"Missing required features: {missing_features}")
+
             # Select and clean features
             feature_data = df[self.config.features].copy()
             feature_data = feature_data.ffill().bfill()
 
             # Get target variable
+            if self.config.target not in df.columns:
+                raise ValueError(f"Target variable {self.config.target} not found")
             target_data = df[self.config.target]
 
             return feature_data.values, target_data.values
@@ -325,3 +329,31 @@ class LightGBMModel(BaseModel):
         except Exception as e:
             self.logger.error(f"Error in cross-validation: {str(e)}")
             raise
+
+    def validate(self, df: pd.DataFrame) -> ModelMetrics:
+        """Validate model performance"""
+        try:
+            predictions = self.predict(df)
+            actuals = df[self.config.target].values
+
+            metrics = ModelMetrics(
+                mse=float(mean_squared_error(actuals, predictions)),
+                rmse=float(np.sqrt(mean_squared_error(actuals, predictions))),
+                mae=float(mean_absolute_error(actuals, predictions)),
+                mape=float(mean_absolute_percentage_error(actuals, predictions)),
+                directional_accuracy=float(self._calculate_directional_accuracy(actuals, predictions)),
+                training_time=self.training_time or 0.0,
+                timestamp=datetime.now()
+            )
+
+            return metrics
+
+        except Exception as e:
+            self.logger.error(f"Error in validation: {str(e)}")
+            raise
+
+    def _calculate_directional_accuracy(self, y_true: np.ndarray, y_pred: np.ndarray) -> float:
+        """Calculate directional accuracy"""
+        pred_direction = np.diff(y_pred) > 0
+        true_direction = np.diff(y_true) > 0
+        return np.mean(pred_direction == true_direction)

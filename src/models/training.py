@@ -29,24 +29,16 @@ class ModelTrainer:
         Path("models/temp").mkdir(parents=True, exist_ok=True)
         Path("logs/training").mkdir(parents=True, exist_ok=True)
 
-    def _load_model_configs(self) -> Dict:
-        """Load and validate model configurations"""
-        try:
-            config_path = Path("config/model_config.yaml")
-            if not config_path.exists():
-                self.logger.warning("Model config not found, using defaults")
-                return self._get_default_configs()
-
-            with open(config_path) as f:
-                config = yaml.safe_load(f)
-                return self._process_configs(config)
-
-        except Exception as e:
-            self.logger.error(f"Error loading model configs: {str(e)}")
-            return self._get_default_configs()
-
     def _get_default_configs(self) -> Dict:
         """Get default model configurations"""
+        base_features = [
+            'close', 'open', 'high', 'low', 'volume',
+            'bb_high_20', 'bb_low_20',  # Bollinger Band features
+            'rsi', 'macd', 'macd_signal',
+            'mfi', 'adx', 'vortex_pos', 'vortex_neg',
+            'volume_sma_30', 'volatility_30'
+        ]
+
         return {
             'lstm': ModelConfig(
                 name='lstm',
@@ -58,12 +50,7 @@ class ModelTrainer:
                     'learning_rate': 0.001,
                     'weight_decay': 0.004
                 },
-                features=[
-                    'close', 'open', 'high', 'low', 'volume',
-                    'bb_high_20', 'bb_low_20',  # Updated BB names
-                    'rsi', 'macd', 'macd_signal',
-                    'volume_sma_30', 'volatility_30'
-                ],
+                features=base_features,
                 target='close',
                 cross_validation=False,
                 cv_folds=5
@@ -81,12 +68,13 @@ class ModelTrainer:
                     'bagging_freq': 5,
                     'early_stopping_rounds': 50
                 },
-                features=[
-                    'close', 'open', 'high', 'low', 'volume',
-                    'bb_high_20', 'bb_low_20',  # Updated BB names
-                    'rsi', 'macd', 'macd_signal',
-                    'volume_sma_30', 'volatility_30',
-                    'adx', 'mfi', 'williams_r'
+                features=base_features + [
+                    'ultimate_oscillator',
+                    'awesome_oscillator',
+                    'mass_index',
+                    'stoch_k',
+                    'stoch_d',
+                    'williams_r'
                 ],
                 target='close',
                 cross_validation=True,
@@ -330,3 +318,19 @@ class ModelTrainer:
         except Exception as e:
             self.logger.error(f"Error getting model metrics: {str(e)}")
             return {}
+
+    def _load_model_configs(self) -> Dict:
+        """Load and validate model configurations"""
+        try:
+            config_path = Path("config/model_config.yaml")
+            if not config_path.exists():
+                self.logger.warning("Model config not found, using defaults")
+                return self._get_default_configs()
+
+            with open(config_path) as f:
+                config = yaml.safe_load(f)
+                return self._process_configs(config)
+
+        except Exception as e:
+            self.logger.error(f"Error loading model configs: {str(e)}")
+            return self._get_default_configs()

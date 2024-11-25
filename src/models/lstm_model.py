@@ -15,35 +15,51 @@ from tensorflow.keras.layers import (
 )
 from tensorflow.keras.optimizers import AdamW
 from .base import BaseModel, ModelConfig
+from src.utils.gpu_utils import setup_gpu, monitor_gpu_usage
+
+def setup_gpu():
+    """Configure GPU settings"""
+    try:
+        gpus = tf.config.list_physical_devices('GPU')
+        if gpus:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            logger.info(f"Found {len(gpus)} GPU(s)")
+            return True
+        else:
+            logger.warning("No GPU found, using CPU")
+            return False
+    except Exception as e:
+        logger.error(f"Error configuring GPU: {e}")
+        return False
 
 class LSTMModel(BaseModel):
-    """Optimized LSTM model for time series prediction"""
-
     def __init__(self, config: ModelConfig):
         super().__init__(config)
-        # Model parameters
+
+        # Setup GPU
+        self.using_gpu = setup_gpu()
+        if self.using_gpu:
+            self.logger.info("Using GPU for training")
+
+        # Adjust batch size for 4GB VRAM
+        self.batch_size = 32  # Smaller batch size for 4GB VRAM
         self.sequence_length = config.params.get('sequence_length', 10)
-        self.batch_size = config.params.get('batch_size', 32)
         self.epochs = config.params.get('epochs', 100)
-        self.validation_split = config.params.get('validation_split', 0.2)
-        self.learning_rate = config.params.get('learning_rate', 0.001)
-        self.weight_decay = config.params.get('weight_decay', 0.004)
-
-        # Add tensorboard directory
-        self.tensorboard_dir = Path('logs/tensorboard')
-        self.tensorboard_dir.mkdir(parents=True, exist_ok=True)
-
-        # Initialize components
-        self.scaler = MinMaxScaler()
-        self.model = None
-        self.logger = logging.getLogger(__name__)
-        self.history = None
-        self.training_time = None
 
     def build_model(self, input_shape: tuple) -> Sequential:
         """Build advanced LSTM architecture with attention"""
         try:
             inputs = Input(shape=input_shape)
+            # Add memory optimization for smaller GPUs
+            tf.keras.backend.clear_session()
+
+            # Reduce batch size if memory is constrained
+            if self.using_gpu:
+                gpu_mem = get_gpu_memory_info()
+                if gpu_mem and gpu_mem['total_memory'] < 6000:  # Less than 6GB
+                    self.batch_size = min(self.batch_size, 32)
+                    self.logger.info(f"Adjusted batch size to {self.batch_size} for GPU memory")
 
             # First LSTM layer with bidirectional wrapper
             x = Bidirectional(LSTM(128, return_sequences=True))(inputs)
@@ -106,25 +122,35 @@ class LSTMModel(BaseModel):
         return X, y
 
     def preprocess(self, df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
-        """Preprocess data for LSTM"""
+        """Preprocess data efficiently"""
         try:
             self.logger.info(f"Preprocessing data of shape: {df.shape}")
 
-            # Select features and clean
+            # Verify all required features are present
+            missing_features = [f for f in self.config.features if f not in df.columns]
+            if missing_features:
+                self.logger.error(f"Missing features: {missing_features}")
+                self.logger.info("Available features:")
+                self.logger.info(", ".join(sorted(df.columns)))
+                raise ValueError(f"Missing required features: {missing_features}")
+
+            # Select and clean features
             feature_data = df[self.config.features].copy()
             feature_data = feature_data.ffill().bfill()
 
             # Scale features
             if not hasattr(self.scaler, 'n_features_in_'):
-                features_scaled = self.scaler.fit_transform(feature_data)
-            else:
-                features_scaled = self.scaler.transform(feature_data)
+                self.scaler = self.scaler.fit(feature_data)
+            features_scaled = self.scaler.transform(feature_data)
 
             # Create sequences
-            X, y = self._create_sequences(features_scaled)
+            total_samples = len(features_scaled) - self.sequence_length
+            X = np.zeros((total_samples, self.sequence_length, len(self.config.features)))
+            y = np.zeros(total_samples)
 
-            if len(X) == 0 or len(y) == 0:
-                raise ValueError("Insufficient data for sequence creation")
+            for i in range(total_samples):
+                X[i] = features_scaled[i:(i + self.sequence_length)]
+                y[i] = feature_data.iloc[i + self.sequence_length][self.config.target]
 
             return X, y
 
@@ -133,9 +159,11 @@ class LSTMModel(BaseModel):
             raise
 
     def train(self, df: pd.DataFrame) -> None:
-        """Train LSTM model"""
         try:
             self.logger.info("Starting LSTM model training...")
+            if self.using_gpu:
+                initial_usage = monitor_gpu_usage()
+                self.logger.info(f"Initial GPU memory usage: {initial_usage}")
             start_time = pd.Timestamp.now()
 
             # Preprocess data
@@ -143,14 +171,23 @@ class LSTMModel(BaseModel):
 
             # Adjust batch size if needed
             if len(X) < self.batch_size:
-                self.batch_size = max(1, len(X) // 4)
-                self.logger.warning(f"Adjusted batch size to {self.batch_size}")
+               self.batch_size = max(1, len(X) // 4)
+               self.logger.warning(f"Adjusted batch size to {self.batch_size}")
 
             # Build model
             self.model = self.build_model(input_shape=(X.shape[1], X.shape[2]))
 
-            # Setup callbacks
+            class GPUMonitorCallback(tf.keras.callbacks.Callback):
+                def on_epoch_end(self, epoch, logs=None):
+                    usage = monitor_gpu_usage()
+                    if usage:
+                        self.model.logger.info(
+                            f"Epoch {epoch} - GPU Memory: {usage['memory_used_mb']}MB, "
+                            f"Temp: {usage['temperature_c']}°C"
+                        )
+
             callbacks = [
+                GPUMonitorCallback(),
                 tf.keras.callbacks.EarlyStopping(
                     monitor='val_loss',
                     patience=15,
@@ -193,7 +230,7 @@ class LSTMModel(BaseModel):
             self._log_training_results()
 
         except Exception as e:
-            self.logger.error(f"Error training LSTM model: {str(e)}")
+            self.logger.error(f"Training error: {str(e)}")
             raise
 
     def _log_training_results(self):

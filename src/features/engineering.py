@@ -139,7 +139,10 @@ class FeatureEngineering:
                 # Handle missing values
                 final_features = final_features.ffill().bfill()
 
-                self.logger.info(f"Final features shape: {final_features.shape}")
+                # Log all available features
+                self.logger.info("Available features:")
+                self.logger.info(", ".join(sorted(final_features.columns)))
+
                 return final_features
             else:
                 self.logger.error("No features were generated")
@@ -154,8 +157,12 @@ class FeatureEngineering:
         try:
             features = pd.DataFrame(index=df.index)
 
+            # Calculate returns first
+            if 'returns' not in df.columns:
+                df['returns'] = df['close'].pct_change(fill_method=None)
+
             # Basic price features
-            features['log_returns'] = np.log1p(df['returns'])
+            features['log_returns'] = np.log1p(df['returns'].fillna(0))
             features['log_price'] = np.log(df['close'])
 
             # Price spreads and ratios
@@ -282,13 +289,10 @@ class FeatureEngineering:
                 )
                 features[f'bb_high_{window}'] = bb.bollinger_hband()
                 features[f'bb_low_{window}'] = bb.bollinger_lband()
+                features[f'bb_middle_{window}'] = bb.bollinger_mavg()
                 features[f'bb_width_{window}'] = (
                         (features[f'bb_high_{window}'] - features[f'bb_low_{window}']) /
-                        bb.bollinger_mavg()
-                )
-                features[f'bb_pct_{window}'] = (
-                        (df['close'] - features[f'bb_low_{window}']) /
-                        (features[f'bb_high_{window}'] - features[f'bb_low_{window}'])
+                        features[f'bb_middle_{window}']
                 )
 
             # Average True Range

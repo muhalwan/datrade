@@ -14,18 +14,23 @@ from concurrent.futures import ThreadPoolExecutor
 import threading
 from queue import Queue
 import json
-
 from src.config import settings
 from src.data.database.connection import MongoDBConnection
 from src.features.engineering import FeatureEngineering
 from src.models.training import ModelTrainer
 from src.monitoring.metrics import PerformanceMonitor
+from src.utils.gpu_utils import get_gpu_info
 
 class MLPipeline:
-    """Enhanced ML Pipeline Coordinator"""
-
     def __init__(self):
         self.logger = self._setup_logging()
+
+        # Check GPU status
+        gpu_info = get_gpu_info()
+        if gpu_info["available"]:
+            self.logger.info(f"GPU available: {gpu_info}")
+        else:
+            self.logger.warning("No GPU available, using CPU only")
         self.db = None
         self.monitor = None
         self.trainer = None
