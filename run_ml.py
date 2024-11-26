@@ -14,6 +14,8 @@ from concurrent.futures import ThreadPoolExecutor
 import threading
 from queue import Queue
 import json
+import torch
+
 from src.config import settings
 from src.data.database.connection import MongoDBConnection
 from src.features.engineering import FeatureEngineering
@@ -22,15 +24,14 @@ from src.monitoring.metrics import PerformanceMonitor
 from src.utils.gpu_utils import get_gpu_info
 
 class MLPipeline:
+    """Enhanced ML Pipeline with improved error handling and monitoring"""
+
     def __init__(self):
         self.logger = self._setup_logging()
 
-        # Check GPU status
-        gpu_info = get_gpu_info()
-        if gpu_info["available"]:
-            self.logger.info(f"GPU available: {gpu_info}")
-        else:
-            self.logger.warning("No GPU available, using CPU only")
+        # Check system resources
+        self._check_system_resources()
+
         self.db = None
         self.monitor = None
         self.trainer = None
@@ -51,7 +52,6 @@ class MLPipeline:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_file = log_dir / f"training_{timestamp}.log"
 
-        # Create formatter
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
@@ -73,6 +73,21 @@ class MLPipeline:
         logger.addHandler(console_handler)
 
         return logger
+
+    def _check_system_resources(self):
+        """Check and log system resources"""
+        # Check GPU
+        gpu_info = get_gpu_info()
+        if gpu_info["available"]:
+            self.logger.info(f"GPU available: {gpu_info}")
+        else:
+            self.logger.warning("No GPU available, using CPU only")
+
+        # Check CUDA for PyTorch
+        if torch.cuda.is_available():
+            self.logger.info(f"PyTorch CUDA available: {torch.cuda.get_device_name(0)}")
+        else:
+            self.logger.warning("PyTorch CUDA not available")
 
     def handle_shutdown(self, signum, frame):
         """Handle graceful shutdown"""
@@ -114,7 +129,7 @@ class MLPipeline:
             return False
 
     def _load_model_config(self) -> Dict:
-        """Load model configuration with validation"""
+        """Load and validate model configuration"""
         config_path = Path("config/model_config.yaml")
         if not config_path.exists():
             raise FileNotFoundError("Model configuration file not found")
@@ -127,9 +142,19 @@ class MLPipeline:
         if not all(field in config for field in required_fields):
             raise ValueError("Invalid model configuration")
 
+        # Validate model configurations
+        for model_name, model_config in config['models'].items():
+            if model_config.get('enabled', True):
+                if 'type' not in model_config:
+                    raise ValueError(f"Model type not specified for {model_name}")
+                if 'features' not in model_config:
+                    raise ValueError(f"Features not specified for {model_name}")
+
         return config
 
-    def fetch_training_data(self, symbol: str, start_time: datetime, end_time: datetime) -> pd.DataFrame:
+    def fetch_training_data(self, symbol: str,
+                            start_time: datetime,
+                            end_time: datetime) -> pd.DataFrame:
         """Fetch and validate training data"""
         try:
             collection = self.db.get_collection('price_data')
@@ -178,7 +203,9 @@ class MLPipeline:
             # Validate data quality
             df = self._validate_data_quality(df)
 
-            self.logger.info(f"Fetched {len(df)} data points with columns: {df.columns.tolist()}")
+            self.logger.info(
+                f"Fetched {len(df)} data points with columns: {df.columns.tolist()}"
+            )
             return df
 
         except Exception as e:
@@ -196,7 +223,7 @@ class MLPipeline:
 
             # Check for gaps
             timestamps = pd.to_datetime(df['timestamp'])
-            gaps = timestamps.diff() > timedelta(minutes=5)  # Adjust threshold as needed
+            gaps = timestamps.diff() > timedelta(minutes=5)
             if gaps.any():
                 self.logger.warning(f"Found {gaps.sum()} gaps in data")
 
@@ -207,8 +234,8 @@ class MLPipeline:
                     outliers = z_scores > 3
                     if outliers.any():
                         self.logger.warning(f"Found {outliers.sum()} outliers in {col}")
-                        # Optionally remove extreme outliers
-                        df = df[z_scores < 5]  # Remove extreme outliers (z-score > 5)
+                        # Remove extreme outliers
+                        df = df[z_scores < 5]
 
             return df
 
@@ -247,7 +274,9 @@ class MLPipeline:
             train_df = features_df[:split_point].copy()
             test_df = features_df[split_point:].copy()
 
-            self.logger.info(f"Training set: {len(train_df)}, Test set: {len(test_df)}")
+            self.logger.info(
+                f"Training set: {len(train_df)}, Test set: {len(test_df)}"
+            )
 
             # Train models
             self.logger.info("Training models...")

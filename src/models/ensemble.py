@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
@@ -7,12 +7,28 @@ import joblib
 import json
 import os
 from collections import deque
-from sklearn.metrics import mean_squared_error, mean_absolute_error
-import time
+import torch
+import torch.nn as nn
+from statistics import mean, stdev
+from sklearn.preprocessing import StandardScaler
+from .base import BaseModel, ModelConfig, ModelMetrics
 
-from .base import BaseModel, ModelConfig
-from .lstm_model import LSTMModel
-from .lightgbm_model import LightGBMModel
+class AdaptiveWeights(nn.Module):
+    """Neural network for adaptive weight computation"""
+    def __init__(self, n_models: int, n_features: int):
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.Linear(n_features, 32),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(32, 16),
+            nn.ReLU(),
+            nn.Linear(16, n_models),
+            nn.Softmax(dim=1)
+        )
+
+    def forward(self, x):
+        return self.network(x)
 
 class EnsembleModel(BaseModel):
     """Enhanced ensemble model with dynamic weighting"""
@@ -24,22 +40,38 @@ class EnsembleModel(BaseModel):
         self.logger = logging.getLogger(__name__)
 
         # Performance tracking
-        self.model_metrics = {}
-        self.prediction_history = []
-        self.performance_window = config.params.get('performance_window', 20)
-
-        # Dynamic weighting parameters
-        self.weight_update_frequency = config.params.get('weight_update_frequency', 10)
-        self.min_weight = config.params.get('min_weight', 0.1)
-        self.prediction_cache = {}
-        self.last_weight_update = datetime.now()
-
-        # Error tracking
-        self.error_history = {
+        self.model_metrics: Dict[str, List[ModelMetrics]] = {}
+        self.prediction_history: List[Dict] = []
+        self.error_history: Dict[str, deque] = {
             'mse': deque(maxlen=100),
             'mae': deque(maxlen=100),
             'directional': deque(maxlen=100)
         }
+
+        # Dynamic weighting parameters
+        self.performance_window = config.params.get('performance_window', 20)
+        self.weight_update_frequency = config.params.get('weight_update_frequency', 10)
+        self.min_weight = config.params.get('min_weight', 0.1)
+        self.adaptive_weighting = config.params.get('adaptive_weighting', True)
+
+        # Initialize components
+        self.adaptive_network = None
+        self.scaler = StandardScaler()
+        self.last_weight_update = datetime.now()
+        self.prediction_cache = {}
+
+    def _initialize_adaptive_network(self, n_features: int):
+        """Initialize the adaptive weighting network"""
+        if self.adaptive_weighting and len(self.models) > 1:
+            self.adaptive_network = AdaptiveWeights(
+                n_models=len(self.models),
+                n_features=n_features
+            )
+            self.optimizer = torch.optim.Adam(
+                self.adaptive_network.parameters(),
+                lr=0.001,
+                weight_decay=0.0001
+            )
 
     def add_model(self, name: str, model: BaseModel, weight: float = 1.0) -> None:
         """Add a model to the ensemble"""
@@ -52,7 +84,12 @@ class EnsembleModel(BaseModel):
 
             self.models[name] = model
             self.weights[name] = weight
-            self.normalize_weights()
+            self.model_metrics[name] = []
+            self._normalize_weights()
+
+            # Initialize adaptive network if needed
+            if len(model.config.features) > 0:
+                self._initialize_adaptive_network(len(model.config.features))
 
             self.logger.info(f"Added model {name} with weight {weight:.3f}")
             self.logger.info(f"Current weights: {self.weights}")
@@ -61,13 +98,20 @@ class EnsembleModel(BaseModel):
             self.logger.error(f"Error adding model {name}: {str(e)}")
             raise
 
-    def normalize_weights(self) -> None:
+    def _normalize_weights(self) -> None:
         """Normalize weights to sum to 1"""
         try:
             total = sum(self.weights.values())
             if total <= 0:
                 raise ValueError("Sum of weights must be positive")
 
+            self.weights = {
+                name: max(self.min_weight, weight/total)
+                for name, weight in self.weights.items()
+            }
+
+            # Re-normalize after applying min weight
+            total = sum(self.weights.values())
             self.weights = {
                 name: weight/total
                 for name, weight in self.weights.items()
@@ -77,19 +121,27 @@ class EnsembleModel(BaseModel):
             self.logger.error(f"Error normalizing weights: {str(e)}")
             raise
 
-    def calculate_model_performance(self, model_name: str,
-                                    predictions: np.ndarray,
-                                    actuals: np.ndarray) -> Dict[str, float]:
+    def _calculate_model_performance(self, model_name: str,
+                                     predictions: np.ndarray,
+                                     actuals: np.ndarray) -> Dict[str, float]:
         """Calculate comprehensive model performance metrics"""
         try:
             if len(predictions) < 2 or len(actuals) < 2:
                 return {}
 
-            # Calculate basic error metrics
-            mse = mean_squared_error(actuals, predictions)
-            mae = mean_absolute_error(actuals, predictions)
+            # Remove NaN values
+            mask = ~np.isnan(predictions) & ~np.isnan(actuals)
+            predictions = predictions[mask]
+            actuals = actuals[mask]
 
-            # Calculate directional accuracy
+            if len(predictions) < 2:
+                return {}
+
+            # Calculate metrics
+            mse = np.mean((predictions - actuals) ** 2)
+            mae = np.mean(np.abs(predictions - actuals))
+
+            # Directional accuracy
             pred_direction = np.diff(predictions) > 0
             actual_direction = np.diff(actuals) > 0
             directional_accuracy = np.mean(pred_direction == actual_direction)
@@ -112,43 +164,50 @@ class EnsembleModel(BaseModel):
             self.logger.error(f"Error calculating performance for {model_name}: {str(e)}")
             return {}
 
-    def update_weights_dynamically(self, recent_performances: Dict[str, Dict[str, float]]) -> None:
+    def _update_weights_dynamically(self, df: pd.DataFrame,
+                                    recent_performances: Dict[str, Dict[str, float]]) -> None:
         """Update weights based on recent performance"""
         try:
-            if not recent_performances:
+            if not recent_performances or len(self.models) < 2:
                 return
 
-            # Calculate weight adjustments based on error scores
-            error_scores = {
-                name: perf['error_score']
-                for name, perf in recent_performances.items()
-                if 'error_score' in perf
-            }
+            if self.adaptive_weighting and self.adaptive_network is not None:
+                # Use adaptive network for weight computation
+                features = torch.FloatTensor(
+                    self.scaler.transform(df[self.config.features].values)
+                )
+                with torch.no_grad():
+                    weights = self.adaptive_network(features).mean(dim=0).numpy()
+                self.weights = {
+                    name: max(self.min_weight, weight)
+                    for name, weight in zip(self.models.keys(), weights)
+                }
+            else:
+                # Use performance-based weighting
+                error_scores = {
+                    name: perf['error_score']
+                    for name, perf in recent_performances.items()
+                    if 'error_score' in perf
+                }
 
-            if not error_scores:
-                return
+                if not error_scores:
+                    return
 
-            # Convert errors to weights (lower error = higher weight)
-            max_error = max(error_scores.values())
-            inv_errors = {
-                name: (max_error - error + 1e-6)
-                for name, error in error_scores.items()
-            }
+                # Convert errors to weights
+                max_error = max(error_scores.values())
+                inv_errors = {
+                    name: (max_error - error + 1e-6)
+                    for name, error in error_scores.items()
+                }
 
-            # Calculate new weights
-            total_inv_error = sum(inv_errors.values())
-            new_weights = {
-                name: max(self.min_weight, inv_error / total_inv_error)
-                for name, inv_error in inv_errors.items()
-            }
+                # Calculate new weights
+                total = sum(inv_errors.values())
+                self.weights = {
+                    name: max(self.min_weight, inv_error / total)
+                    for name, inv_error in inv_errors.items()
+                }
 
-            # Normalize weights
-            total_weight = sum(new_weights.values())
-            self.weights = {
-                name: weight / total_weight
-                for name, weight in new_weights.items()
-            }
-
+            self._normalize_weights()
             self.last_weight_update = datetime.now()
 
             # Log weight updates
@@ -162,10 +221,10 @@ class EnsembleModel(BaseModel):
     def preprocess(self, df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
         """Preprocess data for ensemble"""
         try:
-            # Use first model's preprocessing as reference
             if not self.models:
                 raise ValueError("No models in ensemble")
 
+            # Use first model's preprocessing as reference
             first_model = next(iter(self.models.values()))
             return first_model.preprocess(df)
 
@@ -174,9 +233,41 @@ class EnsembleModel(BaseModel):
             raise
 
     def train(self, df: pd.DataFrame) -> None:
-        """Ensemble doesn't need training as it uses trained models"""
-        self.logger.info("Ensemble model uses pre-trained models")
-        pass
+        """Train the adaptive network if enabled"""
+        if self.adaptive_weighting and self.adaptive_network is not None:
+            try:
+                # Prepare data
+                features = torch.FloatTensor(
+                    self.scaler.fit_transform(df[self.config.features].values)
+                )
+                actuals = torch.FloatTensor(df[self.config.target].values)
+
+                # Train adaptive network
+                self.adaptive_network.train()
+                for epoch in range(100):
+                    self.optimizer.zero_grad()
+                    weights = self.adaptive_network(features)
+
+                    # Get predictions from all models
+                    model_predictions = []
+                    for model in self.models.values():
+                        preds = model.predict(df)
+                        model_predictions.append(torch.FloatTensor(preds))
+
+                    # Compute weighted predictions
+                    ensemble_preds = sum(w * p for w, p in zip(weights.T, model_predictions))
+
+                    # Compute loss
+                    loss = nn.MSELoss()(ensemble_preds, actuals)
+                    loss.backward()
+                    self.optimizer.step()
+
+                    if (epoch + 1) % 10 == 0:
+                        self.logger.info(f"Epoch {epoch+1}, Loss: {loss.item():.6f}")
+
+            except Exception as e:
+                self.logger.error(f"Error training adaptive network: {str(e)}")
+                self.adaptive_weighting = False
 
     def predict(self, df: pd.DataFrame) -> np.ndarray:
         """Make ensemble predictions with dynamic weighting"""
@@ -191,9 +282,9 @@ class EnsembleModel(BaseModel):
             # Get predictions from each model
             for name, model in self.models.items():
                 try:
-                    start_time = time.time()
+                    start_time = datetime.now()
                     pred = model.predict(df)
-                    pred_time = time.time() - start_time
+                    pred_time = (datetime.now() - start_time).total_seconds()
 
                     predictions[name] = pred
                     self.prediction_cache[name] = {
@@ -202,10 +293,10 @@ class EnsembleModel(BaseModel):
                         'prediction_time': pred_time
                     }
 
-                    # Calculate performance if we have actual values
                     if self.config.target in df.columns:
-                        perf = self.calculate_model_performance(
-                            name, pred[-self.performance_window:],
+                        perf = self._calculate_model_performance(
+                            name,
+                            pred[-self.performance_window:],
                             df[self.config.target].values[-self.performance_window:]
                         )
                         performances[name] = perf
@@ -217,24 +308,21 @@ class EnsembleModel(BaseModel):
             if not predictions:
                 raise ValueError("No valid predictions from any model")
 
-            # Update weights if enough time has passed
+            # Update weights if needed
             if (current_time - self.last_weight_update).seconds > self.weight_update_frequency:
-                self.update_weights_dynamically(performances)
+                self._update_weights_dynamically(df, performances)
 
             # Calculate weighted predictions
             weighted_pred = np.zeros_like(next(iter(predictions.values())))
-            weights_used = {}
-
             for name, pred in predictions.items():
                 weight = self.weights.get(name, 0)
                 weighted_pred += pred * weight
-                weights_used[name] = weight
 
             # Store prediction info
             self.prediction_history.append({
                 'timestamp': current_time,
                 'predictions': predictions,
-                'weights_used': weights_used,
+                'weights': self.weights.copy(),
                 'final_prediction': weighted_pred,
                 'performances': performances
             })
@@ -258,11 +346,15 @@ class EnsembleModel(BaseModel):
             recent_history = self.prediction_history[-self.performance_window:]
 
             diagnostics = {
-                'model_weights': self.weights,
-                'last_weight_update': self.last_weight_update,
+                'model_weights': self.weights.copy(),
+                'last_weight_update': self.last_weight_update.isoformat(),
                 'model_performances': {},
                 'prediction_times': {},
-                'error_trends': {}
+                'error_trends': {},
+                'adaptive_network_status': {
+                    'enabled': self.adaptive_weighting,
+                    'initialized': self.adaptive_network is not None
+                }
             }
 
             for name in self.models:
@@ -274,7 +366,7 @@ class EnsembleModel(BaseModel):
 
                 if model_perfs:
                     diagnostics['model_performances'][name] = {
-                        metric: np.mean([p.get(metric, np.nan) for p in model_perfs])
+                        metric: mean([p.get(metric, np.nan) for p in model_perfs])
                         for metric in ['mse', 'mae', 'directional_accuracy']
                     }
 
@@ -291,24 +383,42 @@ class EnsembleModel(BaseModel):
     def save(self, path: str) -> None:
         """Save ensemble model and its components"""
         try:
+            os.makedirs(path, exist_ok=True)
+
+            # Save base model info
             super().save(path)
 
-            # Save ensemble specific configuration
+            # Save ensemble configuration
             config = {
                 'weights': self.weights,
+                'performance_window': self.performance_window,
+                'weight_update_frequency': self.weight_update_frequency,
+                'min_weight': self.min_weight,
+                'adaptive_weighting': self.adaptive_weighting,
                 'model_configs': {
                     name: model.config.to_dict()
                     for name, model in self.models.items()
                 }
             }
 
-            config_path = os.path.join(path, 'ensemble_config.json')
-            with open(config_path, 'w') as f:
+            with open(os.path.join(path, 'ensemble_config.json'), 'w') as f:
                 json.dump(config, f, indent=4)
 
             # Save prediction history
-            history_path = os.path.join(path, 'prediction_history.pkl')
-            joblib.dump(self.prediction_history[-1000:], history_path)
+            joblib.dump(
+                self.prediction_history[-1000:],
+                os.path.join(path, 'prediction_history.pkl')
+            )
+
+            # Save adaptive network if exists
+            if self.adaptive_network is not None:
+                torch.save(
+                    {
+                        'state_dict': self.adaptive_network.state_dict(),
+                        'scaler': self.scaler
+                    },
+                    os.path.join(path, 'adaptive_network.pt')
+                )
 
             # Save component models
             for name, model in self.models.items():
@@ -321,38 +431,59 @@ class EnsembleModel(BaseModel):
             self.logger.error(f"Error saving ensemble: {str(e)}")
             raise
 
-    def load(self, path: str) -> None:
-        """Load ensemble model and its components"""
-        try:
-            config_path = os.path.join(path, 'ensemble_config.json')
-            if not os.path.exists(config_path):
-                raise FileNotFoundError(f"Config not found at {config_path}")
+def load(self, path: str) -> None:
+    """Load ensemble model and its components"""
+    try:
+        # Load base model info
+        super().load(path)
 
-            # Load configuration
-            with open(config_path) as f:
-                config = json.load(f)
-                self.weights = config['weights']
+        # Load ensemble configuration
+        config_path = os.path.join(path, 'ensemble_config.json')
+        if not os.path.exists(config_path):
+            raise FileNotFoundError(f"Config not found at {config_path}")
 
-            # Load component models
-            for name, model_config in config['model_configs'].items():
-                model_path = os.path.join(path, name)
-                if model_config['type'] == 'lstm':
-                    model = LSTMModel(ModelConfig(**model_config))
-                elif model_config['type'] == 'lightgbm':
-                    model = LightGBMModel(ModelConfig(**model_config))
-                else:
-                    continue
+        # Load configuration
+        with open(config_path) as f:
+            config = json.load(f)
+            self.weights = config['weights']
+            self.performance_window = config['performance_window']
+            self.weight_update_frequency = config['weight_update_frequency']
+            self.min_weight = config['min_weight']
+            self.adaptive_weighting = config['adaptive_weighting']
 
-                model.load(model_path)
-                self.models[name] = model
+        # Load component models
+        for name, model_config in config['model_configs'].items():
+            model_path = os.path.join(path, name)
+            model_type = ModelType[model_config['type'].upper()]
 
-            # Load prediction history
-            history_path = os.path.join(path, 'prediction_history.pkl')
-            if os.path.exists(history_path):
-                self.prediction_history = joblib.load(history_path)
+            if model_type == ModelType.LSTM:
+                from .lstm_model import LSTMModel
+                model = LSTMModel(ModelConfig(**model_config))
+            elif model_type == ModelType.LIGHTGBM:
+                from .lightgbm_model import LightGBMModel
+                model = LightGBMModel(ModelConfig(**model_config))
+            else:
+                continue
 
-            self.logger.info(f"Ensemble model loaded from {path}")
+            model.load(model_path)
+            self.models[name] = model
 
-        except Exception as e:
-            self.logger.error(f"Error loading ensemble: {str(e)}")
-            raise
+        # Load prediction history
+        history_path = os.path.join(path, 'prediction_history.pkl')
+        if os.path.exists(history_path):
+            self.prediction_history = joblib.load(history_path)
+
+        # Load adaptive network if exists
+        network_path = os.path.join(path, 'adaptive_network.pt')
+        if os.path.exists(network_path) and self.adaptive_weighting:
+            checkpoint = torch.load(network_path)
+            n_features = len(next(iter(self.models.values())).config.features)
+            self._initialize_adaptive_network(n_features)
+            self.adaptive_network.load_state_dict(checkpoint['state_dict'])
+            self.scaler = checkpoint['scaler']
+
+        self.logger.info(f"Ensemble model loaded from {path}")
+
+    except Exception as e:
+        self.logger.error(f"Error loading ensemble: {str(e)}")
+        raise

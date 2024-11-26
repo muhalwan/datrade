@@ -9,7 +9,6 @@ from pathlib import Path
 from datetime import datetime
 import uvicorn
 import os
-
 from src.config import settings
 from src.data.collector import BinanceDataCollector
 from src.data.auth import BinanceAuth, AuthType
@@ -18,32 +17,12 @@ from src.monitoring.api import app
 from src.globals import set_collector, get_collector
 from src.utils.logging import setup_logging
 
-# Create the utils directory and logging.py if they don't exist
-def setup_logging(name='main'):
-    """Setup logging configuration"""
-    log_dir = Path("logs")
-    log_dir.mkdir(exist_ok=True)
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = log_dir / f"{name}_{timestamp}.log"
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler()
-        ]
-    )
-
-    return logging.getLogger(__name__)
 
 # Suppress TensorFlow warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 class TradingPlatform:
     """Main trading platform controller"""
-
     def __init__(self):
         self.logger = setup_logging()
         self.collector = None

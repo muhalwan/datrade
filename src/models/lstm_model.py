@@ -1,6 +1,5 @@
-from pathlib import Path
 import logging
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict, List
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -8,101 +7,58 @@ from tensorflow.keras.models import Sequential, save_model, load_model
 from sklearn.preprocessing import MinMaxScaler
 import joblib
 import os
-from tensorflow.keras.layers import (
-    LSTM, Dense, Dropout, BatchNormalization, Input,
-    Bidirectional, MultiHeadAttention, LayerNormalization,
-    GlobalAveragePooling1D
-)
 from tensorflow.keras.optimizers import AdamW
-from .base import BaseModel, ModelConfig
-from src.utils.gpu_utils import setup_gpu, monitor_gpu_usage, get_gpu_memory_info
-
-def setup_gpu():
-    """Configure GPU settings"""
-    gpu_logger = logging.getLogger(__name__)
-    try:
-        gpus = tf.config.list_physical_devices('GPU')
-        if gpus:
-            for gpu in gpus:
-                tf.config.experimental.set_memory_growth(gpu, True)
-            gpu_logger.info(f"Found {len(gpus)} GPU(s)")
-            return True
-        else:
-            gpu_logger.warning("No GPU found, using CPU")
-            return False
-    except Exception as e:
-        gpu_logger.error(f"Error configuring GPU: {e}")
-        return False
+from .base import BaseModel, ModelConfig, ModelMetrics
+from src.utils.gpu_utils import setup_gpu, get_gpu_info
 
 class LSTMModel(BaseModel):
     def __init__(self, config: ModelConfig):
         super().__init__(config)
         self.logger = logging.getLogger(__name__)
-        self.scaler = MinMaxScaler()
+
+        # Initialize with CPU as fallback
+        self.device = '/CPU:0'
+        self.using_gpu = False
+
+        # Try GPU setup
+        if setup_gpu():
+            self.device = '/GPU:0'
+            self.using_gpu = True
+            self.logger.info("Using GPU for LSTM training")
+        else:
+            self.logger.warning("GPU setup failed, using CPU instead")
 
         # Model params
-        self.sequence_length = config.params.get('sequence_length', 10)
-        self.batch_size = 32
-        self.epochs = config.params.get('epochs', 100)
+        self.sequence_length = config.params.get('sequence_length', 5)
+        self.batch_size = config.params.get('batch_size', 16)
+        self.epochs = config.params.get('epochs', 50)
         self.validation_split = config.params.get('validation_split', 0.2)
-        self.learning_rate = config.params.get('learning_rate', 0.001)
-        self.weight_decay = config.params.get('weight_decay', 0.004)
+        self.learning_rate = config.params.get('learning_rate', 0.0005)
+        self.weight_decay = config.params.get('weight_decay', 0.0001)
 
-        # Dirs
-        self.tensorboard_dir = Path('logs/tensorboard')
-        self.tensorboard_dir.mkdir(parents=True, exist_ok=True)
+        # Initialize components
+        self.scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
+        self.model = None
+        self.history = None
 
-        # GPU setup
-        self.using_gpu = setup_gpu()
-        if self.using_gpu:
-            tf.keras.backend.clear_session()
-            tf.keras.backend.set_floatx('float16')
-            self.batch_size = 16
+        # Clear any existing sessions
+        tf.keras.backend.clear_session()
 
-    def build_model(self, input_shape: tuple) -> Sequential:
-        """Build advanced LSTM architecture with attention"""
-        try:
-            inputs = Input(shape=input_shape)
-            # Add memory optimization for smaller GPUs
-            tf.keras.backend.clear_session()
-            tf.keras.backend.set_floatx('float16')
-
-            # Reduce batch size if memory is constrained
-            if self.using_gpu:
-                gpu_mem = get_gpu_memory_info()
-                if gpu_mem and gpu_mem['total_memory'] < 6000:  # Less than 6GB
-                    self.batch_size = min(self.batch_size, 32)
-                    self.logger.info(f"Adjusted batch size to {self.batch_size} for GPU memory")
-
-            # First LSTM layer with bidirectional wrapper
-            x = Bidirectional(LSTM(64, return_sequences=True))(inputs)
-            x = BatchNormalization()(x)
-            x = Dropout(0.3)(x)
-
-            # Self-attention mechanism
-            attention = MultiHeadAttention(
-                num_heads=4,
-                key_dim=32
-            )(x, x)
-            x = LayerNormalization()(attention + x)
-
-            # Second LSTM layer
-            x = Bidirectional(LSTM(32, return_sequences=True))(x)
-            x = BatchNormalization()(x)
-            x = Dropout(0.2)(x)
-
-            # Global pooling and dense layers
-            x = GlobalAveragePooling1D()(x)
-            x = Dense(64, activation='relu')(x)
-            x = BatchNormalization()(x)
-            x = Dropout(0.2)(x)
-
-            x = Dense(32, activation='relu')(x)
-            x = BatchNormalization()(x)
-
-            outputs = Dense(1)(x)
-
-            model = tf.keras.Model(inputs=inputs, outputs=outputs)
+    def build_model(self, input_shape: tuple) -> tf.keras.Model:
+        """Build LSTM model with proper device placement"""
+        with tf.device(self.device):
+            model = Sequential([
+                tf.keras.layers.InputLayer(input_shape=input_shape),
+                tf.keras.layers.LSTM(64, return_sequences=True),
+                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.Dropout(0.2),
+                tf.keras.layers.LSTM(32),
+                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.Dropout(0.1),
+                tf.keras.layers.Dense(16, activation='relu'),
+                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.Dense(1)
+            ])
 
             optimizer = AdamW(
                 learning_rate=self.learning_rate,
@@ -111,54 +67,27 @@ class LSTMModel(BaseModel):
 
             model.compile(
                 optimizer=optimizer,
-                loss='huber'
+                loss='huber',
+                metrics=['mse', 'mae']
             )
 
             return model
 
-        except Exception as e:
-            self.logger.error(f"Error building LSTM model: {str(e)}")
-            raise
-
-    def _create_sequences(self, data: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """Create sequences for LSTM"""
-        total_samples = len(data) - self.sequence_length
-
-        X = np.zeros((total_samples, self.sequence_length, data.shape[1]))
-        y = np.zeros(total_samples)
-
-        for i in range(total_samples):
-            X[i] = data[i:(i + self.sequence_length)]
-            y[i] = data[i + self.sequence_length, 0]
-
-        self.logger.info(f"Created sequences - X shape: {X.shape}, y shape: {y.shape}")
-        return X, y
-
     def preprocess(self, df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
-        """Preprocess data efficiently"""
         try:
-            feature_data = df[self.config.features].astype('float32')  # Use float32
-            # Scale to [-1,1] range for better stability
-            self.scaler = MinMaxScaler(feature_range=(-1, 1))
-            features_scaled = self.scaler.fit_transform(feature_data)
             self.logger.info(f"Preprocessing data of shape: {df.shape}")
 
-            # Verify all required features are present
-            missing_features = [f for f in self.config.features if f not in df.columns]
-            if missing_features:
-                self.logger.error(f"Missing features: {missing_features}")
-                self.logger.info("Available features:")
-                self.logger.info(", ".join(sorted(df.columns)))
-                raise ValueError(f"Missing required features: {missing_features}")
-
-            # Select and clean features
-            feature_data = df[self.config.features].copy()
+            # Select features and clean
+            feature_data = df[self.config.features].copy().astype('float32')
             feature_data = feature_data.ffill().bfill()
 
-            # Scale features
-            if not hasattr(self.scaler, 'n_featuresf_in_'):
-                self.scaler = self.scaler.fit(feature_data)
-            features_scaled = self.scaler.transform(feature_data)
+            # Remove inf values
+            feature_data = feature_data.replace([np.inf, -np.inf], np.nan)
+            feature_data = feature_data.dropna()
+
+            # Scale data
+            self.scaler = MinMaxScaler(feature_range=(-0.5, 0.5))
+            features_scaled = self.scaler.fit_transform(feature_data)
 
             # Create sequences
             total_samples = len(features_scaled) - self.sequence_length
@@ -169,6 +98,11 @@ class LSTMModel(BaseModel):
                 X[i] = features_scaled[i:(i + self.sequence_length)]
                 y[i] = feature_data.iloc[i + self.sequence_length][self.config.target]
 
+            # Validate
+            if np.isnan(X).any() or np.isnan(y).any():
+                raise ValueError("NaN values in preprocessed data")
+
+            self.logger.info(f"Preprocessed shapes - X: {X.shape}, y: {y.shape}")
             return X, y
 
         except Exception as e:
@@ -178,74 +112,55 @@ class LSTMModel(BaseModel):
     def train(self, df: pd.DataFrame) -> None:
         try:
             self.logger.info("Starting LSTM model training...")
-            if self.using_gpu:
-                initial_usage = monitor_gpu_usage()
-                self.logger.info(f"Initial GPU memory usage: {initial_usage}")
             start_time = pd.Timestamp.now()
 
             # Preprocess data
             X, y = self.preprocess(df)
 
-            # Adjust batch size if needed
-            if len(X) < self.batch_size:
-               self.batch_size = max(1, len(X) // 4)
-               self.logger.warning(f"Adjusted batch size to {self.batch_size}")
-
             # Build model
-            self.model = self.build_model(input_shape=(X.shape[1], X.shape[2]))
+            self.model = self.build_model((self.sequence_length, X.shape[2]))
+            self.logger.info(self.model.summary())
 
-            class GPUMonitorCallback(tf.keras.callbacks.Callback):
-                def __init__(self, logger):
-                    super().__init__()
-                    self.logger = logger
-
-                def on_epoch_end(self, epoch, logs=None):
-                    usage = monitor_gpu_usage()
-                    if usage:
-                        self.logger.info(
-                            f"Epoch {epoch} - GPU Memory: {usage['memory_used_mb']}MB, "
-                            f"Temp: {usage['temperature_c']}°C"
-                        )
-
+            # Training callbacks
             callbacks = [
-                GPUMonitorCallback(self.logger),
                 tf.keras.callbacks.EarlyStopping(
                     monitor='val_loss',
-                    patience=15,
+                    patience=10,
                     restore_best_weights=True,
                     mode='min'
                 ),
                 tf.keras.callbacks.ReduceLROnPlateau(
                     monitor='val_loss',
                     factor=0.5,
-                    patience=7,
-                    min_lr=0.00001,
+                    patience=5,
                     mode='min',
-                    verbose=1
-                ),
-                tf.keras.callbacks.ModelCheckpoint(
-                    filepath=str(Path('models/temp/lstm_checkpoint.keras')),
-                    save_best_only=True,
-                    monitor='val_loss',
-                    mode='min',
-                    verbose=0
+                    min_lr=1e-6
                 ),
                 tf.keras.callbacks.TensorBoard(
-                    log_dir=str(self.tensorboard_dir / f'lstm_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}'),
+                    log_dir=f'logs/tensorboard/lstm_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}',
                     histogram_freq=1
                 )
             ]
 
-            # Train model
-            self.history = self.model.fit(
-                X, y,
-                epochs=self.epochs,
-                batch_size=self.batch_size,
-                validation_split=self.validation_split,
-                callbacks=callbacks,
-                verbose=1,
-                shuffle=False
-            )
+            # Train model with proper error handling
+            try:
+                self.history = self.model.fit(
+                    X, y,
+                    validation_split=self.validation_split,
+                    epochs=self.epochs,
+                    batch_size=self.batch_size,
+                    callbacks=callbacks,
+                    verbose=1
+                )
+            except (tf.errors.ResourceExhaustedError, tf.errors.InternalError) as e:
+                if self.using_gpu:
+                    self.logger.warning("GPU error encountered, falling back to CPU...")
+                    self.device = '/CPU:0'
+                    self.using_gpu = False
+                    # Retry training on CPU
+                    return self.train(df)
+                else:
+                    raise
 
             self.training_time = (pd.Timestamp.now() - start_time).total_seconds()
             self._log_training_results()
@@ -254,28 +169,7 @@ class LSTMModel(BaseModel):
             self.logger.error(f"Training error: {str(e)}")
             raise
 
-    def _log_training_results(self):
-        """Log training results"""
-        try:
-            self.logger.info(f"Training completed: {len(self.history.history['loss'])} epochs")
-            self.logger.info(f"Final loss: {self.history.history['loss'][-1]:.4f}")
-            self.logger.info(f"Final val_loss: {self.history.history['val_loss'][-1]:.4f}")
-            self.logger.info(f"Training time: {self.training_time:.2f} seconds")
-
-            best_epoch = np.argmin(self.history.history['val_loss'])
-            self.logger.info(f"Best epoch: {best_epoch + 1}")
-            self.logger.info(f"Best val_loss: {self.history.history['val_loss'][best_epoch]:.4f}")
-
-            lr_history = self.history.history.get('lr', [])
-            if lr_history:
-                self.logger.info(f"Initial LR: {lr_history[0]:.6f}")
-                self.logger.info(f"Final LR: {lr_history[-1]:.6f}")
-
-        except Exception as e:
-            self.logger.error(f"Error logging results: {str(e)}")
-
     def predict(self, df: pd.DataFrame) -> np.ndarray:
-        """Make predictions"""
         try:
             if self.model is None:
                 raise ValueError("Model not trained")
@@ -292,14 +186,19 @@ class LSTMModel(BaseModel):
             ])
 
             # Make predictions
-            predictions_scaled = self.model.predict(X, batch_size=self.batch_size)
+            with tf.device(self.device):
+                predictions_scaled = self.model.predict(
+                    X,
+                    batch_size=self.batch_size,
+                    verbose=0
+                )
 
             # Inverse transform predictions
             predictions_full = np.zeros((len(predictions_scaled), features_scaled.shape[1]))
             predictions_full[:, 0] = predictions_scaled.flatten()
             predictions = self.scaler.inverse_transform(predictions_full)[:, 0]
 
-            # Pad beginning
+            # Pad beginning with NaN values
             full_predictions = np.full(len(df), np.nan)
             full_predictions[self.sequence_length:] = predictions
 
@@ -309,8 +208,28 @@ class LSTMModel(BaseModel):
             self.logger.error(f"Error making predictions: {str(e)}")
             raise
 
+    def _log_training_results(self):
+        """Log comprehensive training results"""
+        if not self.history:
+            return
+
+        self.logger.info("\nTraining Results:")
+        self.logger.info(f"Training Time: {self.training_time:.2f} seconds")
+        self.logger.info(f"Final Loss: {self.history.history['loss'][-1]:.4f}")
+        self.logger.info(f"Final Val Loss: {self.history.history['val_loss'][-1]:.4f}")
+
+        # Log best epoch
+        best_epoch = np.argmin(self.history.history['val_loss'])
+        self.logger.info(f"Best Epoch: {best_epoch + 1}")
+        self.logger.info(f"Best Val Loss: {self.history.history['val_loss'][best_epoch]:.4f}")
+
+        # Log metrics
+        for metric in ['mse', 'mae']:
+            if metric in self.history.history:
+                self.logger.info(f"Final {metric.upper()}: {self.history.history[metric][-1]:.4f}")
+                self.logger.info(f"Final Val {metric.upper()}: {self.history.history[f'val_{metric}'][-1]:.4f}")
+
     def save(self, path: str) -> None:
-        """Save model and artifacts"""
         try:
             os.makedirs(path, exist_ok=True)
 
@@ -322,13 +241,20 @@ class LSTMModel(BaseModel):
             scaler_path = f"{path}/scaler.pkl"
             joblib.dump(self.scaler, scaler_path)
 
-            # Save metadata
+            # Save training history and metadata
             metadata = {
                 'sequence_length': self.sequence_length,
                 'batch_size': self.batch_size,
                 'features': self.config.features,
                 'training_time': self.training_time,
-                'history': self.history.history if self.history else None
+                'device': self.device,
+                'using_gpu': self.using_gpu,
+                'history': self.history.history if self.history else None,
+                'model_config': {
+                    'learning_rate': self.learning_rate,
+                    'weight_decay': self.weight_decay,
+                    'validation_split': self.validation_split
+                }
             }
             joblib.dump(metadata, f"{path}/metadata.pkl")
 
@@ -339,7 +265,6 @@ class LSTMModel(BaseModel):
             raise
 
     def load(self, path: str) -> None:
-        """Load model and artifacts"""
         try:
             model_path = f"{path}/model.keras"
             scaler_path = f"{path}/scaler.pkl"
@@ -348,19 +273,64 @@ class LSTMModel(BaseModel):
             if not all(os.path.exists(p) for p in [model_path, scaler_path, metadata_path]):
                 raise FileNotFoundError(f"Model files not found in {path}")
 
-            # Load model and artifacts
-            self.model = load_model(model_path)
-            self.scaler = joblib.load(scaler_path)
+            # Load model with proper compile
+            self.model = load_model(model_path, compile=False)
+            optimizer = AdamW(
+                learning_rate=self.learning_rate,
+                weight_decay=self.weight_decay
+            )
+            self.model.compile(
+                optimizer=optimizer,
+                loss='huber',
+                metrics=['mse', 'mae']
+            )
 
-            # Load metadata
+            # Load scaler and metadata
+            self.scaler = joblib.load(scaler_path)
             metadata = joblib.load(metadata_path)
+
+            # Restore configuration
             self.sequence_length = metadata['sequence_length']
             self.batch_size = metadata['batch_size']
             self.config.features = metadata['features']
             self.training_time = metadata['training_time']
+            self.device = metadata['device']
+            self.using_gpu = metadata['using_gpu']
 
             self.logger.info(f"Model loaded from {path}")
 
         except Exception as e:
             self.logger.error(f"Error loading model: {str(e)}")
+            raise
+
+    def validate(self, df: pd.DataFrame) -> ModelMetrics:
+        """Validate model performance"""
+        try:
+            predictions = self.predict(df)
+            actuals = df[self.config.target].values
+
+            # Calculate directional accuracy
+            pred_direction = np.diff(predictions[~np.isnan(predictions)]) > 0
+            true_direction = np.diff(actuals[~np.isnan(predictions)]) > 0
+            directional_accuracy = np.mean(pred_direction == true_direction)
+
+            # Remove NaN values for other metrics
+            mask = ~np.isnan(predictions) & ~np.isnan(actuals)
+            predictions = predictions[mask]
+            actuals = actuals[mask]
+
+            metrics = ModelMetrics(
+                mse=float(np.mean((predictions - actuals) ** 2)),
+                rmse=float(np.sqrt(np.mean((predictions - actuals) ** 2))),
+                mae=float(np.mean(np.abs(predictions - actuals))),
+                mape=float(np.mean(np.abs((predictions - actuals) / actuals)) * 100),
+                directional_accuracy=float(directional_accuracy),
+                training_time=self.training_time or 0.0,
+                timestamp=pd.Timestamp.now()
+            )
+
+            return metrics
+
+        except Exception as e:
+            self.logger.error(f"Error in validation: {str(e)}")
             raise

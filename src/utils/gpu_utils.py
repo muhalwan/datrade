@@ -5,33 +5,57 @@ import os
 
 logger = logging.getLogger(__name__)
 
-def get_gpu_info():
-    """Get detailed GPU information"""
+def setup_gpu():
+    """Configure GPU settings with proper CUDA paths"""
     try:
-        gpu_devices = tf.config.list_physical_devices('GPU')
-        if not gpu_devices:
-            return {"available": False, "message": "No GPU devices found"}
+        # Set CUDA environment variables
+        os.environ['XLA_FLAGS'] = '--xla_gpu_cuda_data_dir=/usr/local/cuda'
+        os.environ['CUDA_DIR'] = '/usr/local/cuda'
 
-        # Get memory info using nvidia-smi
-        result = subprocess.check_output(
-            ['nvidia-smi', '--query-gpu=memory.used,memory.total,temperature.gpu,utilization.gpu',
-             '--format=csv,noheader,nounits'],
-            encoding='utf-8'
-        ).strip().split(',')
+        # Configure memory growth
+        gpus = tf.config.list_physical_devices('GPU')
+        if gpus:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+
+            # Set memory limit (leave some for system)
+            tf.config.set_logical_device_configuration(
+                gpus[0],
+                [tf.config.LogicalDeviceConfiguration(memory_limit=1536)]  # 1.5GB limit
+            )
+
+            # Disable TensorFlow's JIT compilation warning
+            tf.config.optimizer.set_jit(False)
+
+            logger.info("GPU setup completed successfully")
+            return True
+
+        return False
+    except Exception as e:
+        logger.error(f"GPU setup error: {e}")
+        return False
+
+def get_gpu_info():
+    """Get GPU information safely"""
+    try:
+        if not tf.test.is_built_with_cuda():
+            return {"available": False, "message": "TensorFlow not built with CUDA"}
+
+        gpus = tf.config.list_physical_devices('GPU')
+        if not gpus:
+            return {"available": False, "message": "No GPU devices found"}
 
         return {
             "available": True,
-            "count": len(gpu_devices),
-            "memory_used": int(result[0]),
-            "memory_total": int(result[1]),
-            "temperature": int(result[2]),
-            "utilization": int(result[3]),
+            "count": len(gpus),
             "device_name": tf.test.gpu_device_name(),
-            "cuda_version": tf.sysconfig.get_build_info()["cuda_version"]
+            "cuda_version": tf.sysconfig.get_build_info()["cuda_version"],
+            "compute_capability": tf.test.compute_capability()
         }
     except Exception as e:
         logger.error(f"Error getting GPU info: {e}")
         return {"available": False, "error": str(e)}
+
 
 def get_gpu_memory_info():
     try:
@@ -46,32 +70,6 @@ def get_gpu_memory_info():
         }
     except:
         return None
-
-def setup_gpu():
-    """Configure GPU settings for optimal performance with 4GB VRAM"""
-    try:
-        # Enable memory growth
-        gpus = tf.config.list_physical_devices('GPU')
-        if gpus:
-            for gpu in gpus:
-                tf.config.experimental.set_memory_growth(gpu, True)
-
-            # Set memory limit (leave some for system)
-            tf.config.set_logical_device_configuration(
-                gpus[0],
-                [tf.config.LogicalDeviceConfiguration(memory_limit=3072)]  # 3GB limit
-            )
-
-            # Enable mixed precision
-            policy = tf.keras.mixed_precision.Policy('mixed_float16')
-            tf.keras.mixed_precision.set_global_policy(policy)
-
-            logger.info("GPU setup completed successfully")
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"GPU setup error: {e}")
-        return False
 
 def monitor_gpu_usage():
     """Monitor current GPU usage"""
