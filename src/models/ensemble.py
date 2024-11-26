@@ -11,7 +11,8 @@ import torch
 import torch.nn as nn
 from statistics import mean, stdev
 from sklearn.preprocessing import StandardScaler
-from .base import BaseModel, ModelConfig, ModelMetrics
+from .base import BaseModel, ModelConfig, ModelMetrics, ModelType
+
 
 class AdaptiveWeights(nn.Module):
     """Neural network for adaptive weight computation"""
@@ -431,59 +432,35 @@ class EnsembleModel(BaseModel):
             self.logger.error(f"Error saving ensemble: {str(e)}")
             raise
 
-def load(self, path: str) -> None:
-    """Load ensemble model and its components"""
-    try:
-        # Load base model info
-        super().load(path)
+    def load(self, path: str) -> None:
+        """Implement abstract load method"""
+        try:
+            # Load base model info
+            super().load(path)
 
-        # Load ensemble configuration
-        config_path = os.path.join(path, 'ensemble_config.json')
-        if not os.path.exists(config_path):
-            raise FileNotFoundError(f"Config not found at {config_path}")
+            # Load ensemble specific data
+            ensemble_path = os.path.join(path, 'ensemble_config.json')
+            if os.path.exists(ensemble_path):
+                with open(ensemble_path, 'r') as f:
+                    config = json.load(f)
+                    self.weights = config.get('weights', {})
+                    self.performance_window = config.get('performance_window', 20)
+                    self.weight_update_frequency = config.get('weight_update_frequency', 10)
 
-        # Load configuration
-        with open(config_path) as f:
-            config = json.load(f)
-            self.weights = config['weights']
-            self.performance_window = config['performance_window']
-            self.weight_update_frequency = config['weight_update_frequency']
-            self.min_weight = config['min_weight']
-            self.adaptive_weighting = config['adaptive_weighting']
+            # Load component models
+            models_path = os.path.join(path, 'models')
+            if os.path.exists(models_path):
+                for model_dir in os.listdir(models_path):
+                    model_path = os.path.join(models_path, model_dir)
+                    if os.path.isdir(model_path):
+                        config_path = os.path.join(model_path, 'config.json')
+                        if os.path.exists(config_path):
+                            with open(config_path) as f:
+                                model_config = json.load(f)
+                                model = self._create_model(model_config)
+                                model.load(model_path)
+                                self.models[model_dir] = model
 
-        # Load component models
-        for name, model_config in config['model_configs'].items():
-            model_path = os.path.join(path, name)
-            model_type = ModelType[model_config['type'].upper()]
-
-            if model_type == ModelType.LSTM:
-                from .lstm_model import LSTMModel
-                model = LSTMModel(ModelConfig(**model_config))
-            elif model_type == ModelType.LIGHTGBM:
-                from .lightgbm_model import LightGBMModel
-                model = LightGBMModel(ModelConfig(**model_config))
-            else:
-                continue
-
-            model.load(model_path)
-            self.models[name] = model
-
-        # Load prediction history
-        history_path = os.path.join(path, 'prediction_history.pkl')
-        if os.path.exists(history_path):
-            self.prediction_history = joblib.load(history_path)
-
-        # Load adaptive network if exists
-        network_path = os.path.join(path, 'adaptive_network.pt')
-        if os.path.exists(network_path) and self.adaptive_weighting:
-            checkpoint = torch.load(network_path)
-            n_features = len(next(iter(self.models.values())).config.features)
-            self._initialize_adaptive_network(n_features)
-            self.adaptive_network.load_state_dict(checkpoint['state_dict'])
-            self.scaler = checkpoint['scaler']
-
-        self.logger.info(f"Ensemble model loaded from {path}")
-
-    except Exception as e:
-        self.logger.error(f"Error loading ensemble: {str(e)}")
-        raise
+        except Exception as e:
+            self.logger.error(f"Error loading ensemble model: {str(e)}")
+            raise

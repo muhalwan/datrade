@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
@@ -51,8 +52,12 @@ class FeatureEngineering:
         self.cache_dir = Path("cache/features")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def _get_cache_path(self, symbol: str, start_time: datetime, end_time: datetime) -> Path:
+    def _get_cache_path(self, symbol: str, start_time: pd.Timestamp,
+                        end_time: pd.Timestamp) -> Path:
         """Get cache file path for given parameters"""
+        start_time = pd.to_datetime(start_time)
+        end_time = pd.to_datetime(end_time)
+
         cache_key = f"{symbol}_{start_time.strftime('%Y%m%d')}_{end_time.strftime('%Y%m%d')}"
         return self.cache_dir / f"{cache_key}.pkl"
 
@@ -140,7 +145,9 @@ class FeatureEngineering:
             # Add additional base price info
             df_ohlcv['typical_price'] = (df_ohlcv['high'] + df_ohlcv['low'] + df_ohlcv['close']) / 3
             df_ohlcv['price_change'] = df_ohlcv['close'].diff()
-            df_ohlcv['returns'] = df_ohlcv['close'].pct_change()
+
+            # Fix the pct_change warning
+            df_ohlcv['returns'] = df_ohlcv['close'].pct_change(fill_method=None)
 
             # Add time-based features
             df_ohlcv['hour'] = df_ohlcv.index.hour
@@ -153,86 +160,50 @@ class FeatureEngineering:
             self.logger.error(f"Error converting to OHLCV: {str(e)}")
             return None
 
-    def generate_features(self, df: pd.DataFrame, use_cache: bool = True) -> pd.DataFrame:
-        """Generate all features with parallel processing and caching"""
+    def generate_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Generate features with proper error handling"""
         try:
-            self.logger.info(f"Starting feature generation for data shape: {df.shape}")
+            features = pd.DataFrame(index=df.index)
 
-            # Prepare data first
-            features = self.prepare_data(df)
-            if features.empty:
-                self.logger.warning("No data available for feature generation")
-                return pd.DataFrame()
+            # Calculate returns first as it's needed by other features
+            df['returns'] = df['price'].pct_change()
 
-            # Check cache
-            if use_cache:
-                cache_path = self._get_cache_path(
-                    df.get('symbol', ['UNKNOWN'])[0],
-                    df.index[0],
-                    df.index[-1]
-                )
-                cached_features = self._load_from_cache(cache_path)
-                if cached_features is not None:
-                    self.logger.info("Using cached features")
-                    return cached_features
+            # Generate each feature set
+            feature_sets = {
+                'price': self._calculate_price_features(df),
+                'volume': self._calculate_volume_features(df),
+                'volatility': self._calculate_volatility_features(df),
+                'trend': self._calculate_trend_features(df),
+                'momentum': self._calculate_momentum_features(df),
+                'pattern': self._calculate_pattern_features(df)
+            }
 
-            # Generate features in parallel
-            with ThreadPoolExecutor(max_workers=6) as executor:
-                feature_jobs = {
-                    executor.submit(self._calculate_price_features, features): 'price',
-                    executor.submit(self._calculate_volume_features, features): 'volume',
-                    executor.submit(self._calculate_volatility_features, features): 'volatility',
-                    executor.submit(self._calculate_trend_features, features): 'trend',
-                    executor.submit(self._calculate_momentum_features, features): 'momentum',
-                    executor.submit(self._calculate_pattern_features, features): 'pattern'
-                }
+            # Combine all feature sets
+            for name, feature_set in feature_sets.items():
+                if not feature_set.empty:
+                    features = pd.concat([features, feature_set], axis=1)
 
-                # Collect results
-                results = {}
-                for future in feature_jobs:
-                    name = feature_jobs[future]
-                    try:
-                        result = future.result()
-                        if result is not None:
-                            results[name] = result
-                            self.logger.info(f"Generated {name} features")
-                    except Exception as e:
-                        self.logger.error(f"Error generating {name} features: {str(e)}")
+            # Remove duplicate columns
+            features = features.loc[:, ~features.columns.duplicated()]
 
-            # Combine all features
-            if results:
-                # Start with base features
-                final_features = features.copy()
+            # Handle missing values properly using newer pandas methods
+            features = features.ffill().bfill().fillna(0)
 
-                # Add generated features
-                for feature_set in results.values():
-                    final_features = pd.concat([final_features, feature_set], axis=1)
+            # Ensure all required features exist
+            required_features = {
+                'macd', 'macd_signal', 'mfi', 'adx', 'vortex_pos',
+                'vortex_neg', 'volume_sma_30', 'mass_index'
+            }
 
-                # Remove duplicate columns
-                final_features = final_features.loc[:, ~final_features.columns.duplicated()]
+            # Add missing features with zeros if they don't exist
+            missing = required_features - set(features.columns)
+            for feat in missing:
+                features[feat] = 0.0
 
-                # Handle missing values
-                final_features = final_features.ffill().bfill()
-
-                # Convert to float32 for memory efficiency
-                numeric_cols = final_features.select_dtypes(
-                    include=['float64', 'int64']
-                ).columns
-                for col in numeric_cols:
-                    final_features[col] = final_features[col].astype('float32')
-
-                # Cache results
-                if use_cache:
-                    self._save_to_cache(final_features, cache_path)
-
-                self.logger.info(f"Final features shape: {final_features.shape}")
-                return final_features
-
-            self.logger.error("No features were generated")
-            return pd.DataFrame()
+            return features
 
         except Exception as e:
-            self.logger.error(f"Error in feature generation: {str(e)}")
+            self.logger.error(f"Error generating features: {str(e)}")
             return pd.DataFrame()
 
     def _calculate_price_features(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -278,14 +249,14 @@ class FeatureEngineering:
                                                               features[f'lower_channel_{window}']
                                                       ) / df['close']
 
-            return features.fillna(method='ffill').fillna(0)
+            return features.ffill().fillna(0)
 
         except Exception as e:
             self.logger.error(f"Error calculating price features: {str(e)}")
             return pd.DataFrame()
 
     def _calculate_volume_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Calculate volume-based features"""
+        """Calculate volume features with proper error handling"""
         try:
             features = pd.DataFrame(index=df.index)
 
@@ -293,65 +264,33 @@ class FeatureEngineering:
             features['volume_momentum'] = df['volume'].pct_change()
             features['log_volume'] = np.log1p(df['volume'])
 
-            # Relative volume
+            # Volume SMAs
             for window in [5, 15, 30]:
-                features[f'relative_volume_{window}'] = (
-                        df['volume'] / df['volume'].rolling(window).mean()
+                features[f'volume_sma_{window}'] = (
+                    df['volume'].rolling(window=window, min_periods=1)
+                    .mean()
+                    .ffill()
+                    .fillna(0)
                 )
 
-            # Volume moving averages
-            for window in [5, 15, 30]:
-                features[f'volume_sma_{window}'] = df['volume'].rolling(window).mean()
-                features[f'volume_std_{window}'] = df['volume'].rolling(window).std()
-                features[f'volume_zscore_{window}'] = (
-                        (df['volume'] - features[f'volume_sma_{window}']) /
-                        features[f'volume_std_{window}']
-                )
+            # Calculate MFI
+            typical_price = (df['high'] + df['low'] + df['close']) / 3
+            money_flow = typical_price * df['volume']
 
-            # Volume price correlation
-            for window in [5, 15, 30]:
-                features[f'volume_price_corr_{window}'] = (
-                    df[['close', 'volume']]
-                    .rolling(window)
-                    .corr()
-                    .unstack()
-                    .iloc[:, 1]
-                )
+            pos_flow = pd.Series(0, index=df.index)
+            neg_flow = pd.Series(0, index=df.index)
 
-            # Advanced volume indicators
-            features['mfi'] = ta.volume.money_flow_index(
-                high=df['high'],
-                low=df['low'],
-                close=df['close'],
-                volume=df['volume'],
-                window=self.tech_features['rsi_window']
-            )
+            price_diff = typical_price.diff()
+            pos_flow[price_diff > 0] = money_flow[price_diff > 0]
+            neg_flow[price_diff < 0] = money_flow[price_diff < 0]
 
-            features['obv'] = ta.volume.on_balance_volume(
-                close=df['close'],
-                volume=df['volume']
-            )
+            pos_mf = pos_flow.rolling(window=14, min_periods=1).sum()
+            neg_mf = neg_flow.rolling(window=14, min_periods=1).sum()
 
-            features['force_index'] = ta.volume.force_index(
-                close=df['close'],
-                volume=df['volume'],
-                window=13
-            )
+            mfi = 100 - (100 / (1 + pos_mf / neg_mf))
+            features['mfi'] = mfi.ffill().fillna(50)
 
-            features['ease_of_movement'] = ta.volume.ease_of_movement(
-                high=df['high'],
-                low=df['low'],
-                volume=df['volume'],
-                window=14
-            )
-
-            # Volume-weighted metrics
-            features['vwap'] = (df['volume'] * df['close']).cumsum() / df['volume'].cumsum()
-            features['volume_weighted_volatility'] = (
-                                                             df['volume'] * features['returns'].rolling(window=30).std()
-                                                     ).rolling(window=30).mean() / df['volume'].rolling(window=30).mean()
-
-            return features.fillna(method='ffill').fillna(0)
+            return features.fillna(0)
 
         except Exception as e:
             self.logger.error(f"Error calculating volume features: {str(e)}")
@@ -456,7 +395,7 @@ class FeatureEngineering:
                     features['true_range'] / df['close']
             ).rolling(window=14).mean()
 
-            return features.fillna(method='ffill').fillna(0)
+            return features.ffill().fillna(0)
 
         except Exception as e:
             self.logger.error(f"Error calculating volatility features: {str(e)}")
@@ -466,6 +405,12 @@ class FeatureEngineering:
         """Calculate trend features"""
         try:
             features = pd.DataFrame(index=df.index)
+
+            # Calculate SMA 20 first as it's needed for crossovers
+            sma_20 = ta.trend.sma_indicator(
+                df['close'], window=20, fillna=True
+            )
+            features['sma_20'] = sma_20
 
             # Moving Averages
             for window in self.tech_features['sma']:
@@ -478,31 +423,28 @@ class FeatureEngineering:
 
                 # Distance from MA
                 features[f'dist_to_sma_{window}'] = (
-                        df['close'] / features[f'sma_{window}'] - 1
-                )
+                    df['close'] / features[f'sma_{window}']).fillna(1) - 1
                 features[f'dist_to_ema_{window}'] = (
-                        df['close'] / features[f'ema_{window}'] - 1
-                )
+                    df['close'] / features[f'ema_{window}']).fillna(1) - 1
 
                 # MA Crossovers
                 if window > 20:
                     features[f'sma_cross_20_{window}'] = np.where(
-                        features[f'sma_20'] > features[f'sma_{window}'], 1,
-                        np.where(features[f'sma_20'] < features[f'sma_{window}'], -1, 0)
+                        sma_20 > features[f'sma_{window}'], 1,
+                        np.where(sma_20 < features[f'sma_{window}'], -1, 0)
                     )
 
             # MACD
-            macd = ta.trend.MACD(
+            macd_ind = ta.trend.MACD(
                 close=df['close'],
                 window_slow=self.tech_features['macd_slow'],
                 window_fast=self.tech_features['macd_fast'],
-                window_sign=self.tech_features['macd_signal'],
-                fillna=True
+                window_sign=self.tech_features['macd_signal']
             )
-            features['macd'] = macd.macd()
-            features['macd_signal'] = macd.macd_signal()
-            features['macd_diff'] = macd.macd_diff()
-            features['macd_pct'] = features['macd'] / df['close']
+            features['macd'] = macd_ind.macd()
+            features['macd_signal'] = macd_ind.macd_signal()
+            features['macd_diff'] = macd_ind.macd_diff()
+            features['macd_pct'] = features['macd'].fillna(0) / df['close']
 
             # Trend Direction
             adx = ta.trend.ADXIndicator(
@@ -568,7 +510,7 @@ class FeatureEngineering:
             features['ichimoku_a'] = ichimoku.ichimoku_a()
             features['ichimoku_b'] = ichimoku.ichimoku_b()
 
-            return features.fillna(method='ffill').fillna(0)
+            return features.fillna(0)
 
         except Exception as e:
             self.logger.error(f"Error calculating trend features: {str(e)}")
@@ -659,7 +601,7 @@ class FeatureEngineering:
             features['stoch_rsi_k'] = stoch_rsi.stochrsi_k()
             features['stoch_rsi_d'] = stoch_rsi.stochrsi_d()
 
-            return features.fillna(method='ffill').fillna(0)
+            return features.ffill().fillna(0)
 
         except Exception as e:
             self.logger.error(f"Error calculating momentum features: {str(e)}")
@@ -670,76 +612,59 @@ class FeatureEngineering:
         try:
             features = pd.DataFrame(index=df.index)
 
-            # Basic candlestick features
-            features['body_size'] = abs(df['close'] - df['open']) / (df['high'] - df['low'])
-            features['upper_shadow'] = (df['high'] - df[['open', 'close']].max(axis=1)) / (df['high'] - df['low'])
-            features['lower_shadow'] = (df[['open', 'close']].min(axis=1) - df['low']) / (df['high'] - df['low'])
+            # Ensure all inputs are float64 for talib compatibility
+            ohlc = df[['open', 'high', 'low', 'close']].astype('float64')
 
-            # Candlestick patterns using ta-lib if available
+            # Basic candlestick features
+            features['body_size'] = (
+                    abs(ohlc['close'] - ohlc['open']) / (ohlc['high'] - ohlc['low'])
+            ).fillna(0)
+
+            features['upper_shadow'] = (
+                    (ohlc['high'] - ohlc[['open', 'close']].max(axis=1)) /
+                    (ohlc['high'] - ohlc['low'])
+            ).fillna(0)
+
+            features['lower_shadow'] = (
+                    (ohlc[['open', 'close']].min(axis=1) - ohlc['low']) /
+                    (ohlc['high'] - ohlc['low'])
+            ).fillna(0)
+
             try:
                 import talib
-
-                # Single candlestick patterns
-                patterns = {
+                # Candlestick patterns
+                pattern_funcs = {
                     'doji': talib.CDLDOJI,
                     'hammer': talib.CDLHAMMER,
                     'shooting_star': talib.CDLSHOOTINGSTAR,
-                    'spinning_top': talib.CDLSPINNINGTOP,
-                    'marubozu': talib.CDLMARUBOZU
+                    'engulfing': talib.CDLENGULFING,
+                    'morning_star': talib.CDLMORNINGSTAR,
+                    'evening_star': talib.CDLEVENINGSTAR
                 }
 
-                # Double candlestick patterns
-                patterns.update({
-                    'engulfing': talib.CDLENGULFING,
-                    'harami': talib.CDLHARAMI,
-                    'piercing_line': talib.CDLPIERCING,
-                    'dark_cloud_cover': talib.CDLDARKCLOUDCOVER
-                })
-
-                # Triple candlestick patterns
-                patterns.update({
-                    'morning_star': talib.CDLMORNINGSTAR,
-                    'evening_star': talib.CDLEVENINGSTAR,
-                    'three_white_soldiers': talib.CDL3WHITESOLDIERS,
-                    'three_black_crows': talib.CDL3BLACKCROWS
-                })
-
-                for pattern_name, pattern_func in patterns.items():
+                for pattern_name, pattern_func in pattern_funcs.items():
                     features[f'pattern_{pattern_name}'] = pattern_func(
-                        df['open'].values,
-                        df['high'].values,
-                        df['low'].values,
-                        df['close'].values
+                        ohlc['open'].values,
+                        ohlc['high'].values,
+                        ohlc['low'].values,
+                        ohlc['close'].values
                     )
 
             except ImportError:
-                self.logger.warning("ta-lib not installed, using basic patterns only")
-                # Calculate basic patterns without ta-lib
-                features['is_doji'] = (
-                    (abs(df['close'] - df['open']) <= 0.1 * (df['high'] - df['low']))
-                ).astype(int)
-
-                features['is_hammer'] = (
-                        (features['lower_shadow'] > 2 * features['body_size']) &
-                        (features['upper_shadow'] < 0.2)
-                ).astype(int)
+                self.logger.warning("ta-lib not installed, skipping pattern features")
 
             # Other pattern features
             features['inside_bar'] = (
-                    (df['high'] <= df['high'].shift(1)) &
-                    (df['low'] >= df['low'].shift(1))
+                    (ohlc['high'] <= ohlc['high'].shift(1)) &
+                    (ohlc['low'] >= ohlc['low'].shift(1))
             ).astype(int)
 
             features['outside_bar'] = (
-                    (df['high'] >= df['high'].shift(1)) &
-                    (df['low'] <= df['low'].shift(1))
+                    (ohlc['high'] >= ohlc['high'].shift(1)) &
+                    (ohlc['low'] <= ohlc['low'].shift(1))
             ).astype(int)
 
-            # Gap features
-            features['gap_up'] = (df['low'] > df['high'].shift(1)).astype(int)
-            features['gap_down'] = (df['high'] < df['low'].shift(1)).astype(int)
-
-            return features.fillna(method='ffill').fillna(0)
+            return features.fillna(0)
 
         except Exception as e:
             self.logger.error(f"Error calculating pattern features: {str(e)}")

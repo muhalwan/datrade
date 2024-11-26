@@ -2,59 +2,82 @@ import logging
 import tensorflow as tf
 import subprocess
 import os
+import torch
 
 logger = logging.getLogger(__name__)
 
-def setup_gpu():
-    """Configure GPU settings with proper CUDA paths"""
-    try:
-        # Set CUDA environment variables
-        os.environ['XLA_FLAGS'] = '--xla_gpu_cuda_data_dir=/usr/local/cuda'
-        os.environ['CUDA_DIR'] = '/usr/local/cuda'
-
-        # Configure memory growth
-        gpus = tf.config.list_physical_devices('GPU')
-        if gpus:
-            for gpu in gpus:
-                tf.config.experimental.set_memory_growth(gpu, True)
-
-            # Set memory limit (leave some for system)
-            tf.config.set_logical_device_configuration(
-                gpus[0],
-                [tf.config.LogicalDeviceConfiguration(memory_limit=1536)]  # 1.5GB limit
-            )
-
-            # Disable TensorFlow's JIT compilation warning
-            tf.config.optimizer.set_jit(False)
-
-            logger.info("GPU setup completed successfully")
-            return True
-
-        return False
-    except Exception as e:
-        logger.error(f"GPU setup error: {e}")
-        return False
-
 def get_gpu_info():
-    """Get GPU information safely"""
+    """Get GPU information from both TensorFlow and PyTorch"""
     try:
-        if not tf.test.is_built_with_cuda():
-            return {"available": False, "message": "TensorFlow not built with CUDA"}
-
-        gpus = tf.config.list_physical_devices('GPU')
-        if not gpus:
-            return {"available": False, "message": "No GPU devices found"}
-
-        return {
-            "available": True,
-            "count": len(gpus),
-            "device_name": tf.test.gpu_device_name(),
-            "cuda_version": tf.sysconfig.get_build_info()["cuda_version"],
-            "compute_capability": tf.test.compute_capability()
+        gpu_info = {
+            "available": False,
+            "tensorflow_gpus": [],
+            "pytorch_cuda": False,
+            "memory_info": None
         }
+
+        # Check TensorFlow GPUs
+        tf_gpus = tf.config.list_physical_devices('GPU')
+        if tf_gpus:
+            gpu_info["available"] = True
+            gpu_info["tensorflow_gpus"] = [{
+                "name": gpu.name,
+                "device_type": gpu.device_type,
+            } for gpu in tf_gpus]
+
+            # Get memory info
+            memory_info = tf.config.experimental.get_memory_info('GPU:0')
+            if memory_info:
+                gpu_info["memory_info"] = {
+                    "peak": memory_info['peak'] / (1024 * 1024),  # Convert to MB
+                    "current": memory_info['current'] / (1024 * 1024)
+                }
+
+        # Check PyTorch CUDA
+        if torch.cuda.is_available():
+            gpu_info["available"] = True
+            gpu_info["pytorch_cuda"] = True
+            gpu_info["cuda_device"] = torch.cuda.get_device_name(0)
+            gpu_info["cuda_version"] = torch.version.cuda
+
+        return gpu_info
+
     except Exception as e:
         logger.error(f"Error getting GPU info: {e}")
         return {"available": False, "error": str(e)}
+
+def setup_gpu():
+    """Configure GPU settings for both TensorFlow and PyTorch"""
+    try:
+        # Do TensorFlow GPU setup first, before any GPU operations
+        gpus = tf.config.list_physical_devices('GPU')
+        if gpus:
+            try:
+                for gpu in gpus:
+                    tf.config.experimental.set_memory_growth(gpu, True)
+
+                # Set memory limit only for the first GPU
+                memory_limit = int(1024 * 3)  # 3GB limit
+                logical_gpus = [tf.config.LogicalDeviceConfiguration(memory_limit=memory_limit)]
+                tf.config.set_logical_device_configuration(gpus[0], logical_gpus)
+
+            except RuntimeError as e:
+                logger.warning(f"GPU memory configuration must be set before GPUs are initialized: {e}")
+
+        # PyTorch GPU setup
+        if torch.cuda.is_available():
+            # Set the current GPU device
+            torch.cuda.set_device(0)
+            # Enable cuDNN auto-tuner
+            torch.backends.cudnn.benchmark = True
+            # For reproducibility
+            torch.backends.cudnn.deterministic = True
+
+        return True
+
+    except Exception as e:
+        logger.error(f"GPU setup error: {e}")
+        return False
 
 
 def get_gpu_memory_info():

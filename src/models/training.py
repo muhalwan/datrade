@@ -37,20 +37,37 @@ class ModelTrainer:
         self._setup_gpu()
 
     def _setup_gpu(self):
-        """Setup GPU configurations for different frameworks"""
+        """Configure GPU settings properly"""
         try:
-            # PyTorch GPU setup
-            if torch.cuda.is_available():
-                self.device = torch.device("cuda")
-                torch.backends.cudnn.benchmark = True
-                self.logger.info(f"Using GPU: {torch.cuda.get_device_name(0)}")
+            # Configure TensorFlow GPU
+            gpus = tf.config.list_physical_devices('GPU')
+            if gpus:
+                # Must be done before any GPU operations
+                for gpu in gpus:
+                    # Memory growth must be set before GPUs are initialized
+                    tf.config.experimental.set_memory_growth(gpu, True)
+
+                try:
+                    # Configure memory limit (do this first)
+                    tf.config.set_logical_device_configuration(
+                        gpus[0],
+                        [tf.config.LogicalDeviceConfiguration(memory_limit=3072)]
+                    )
+                except RuntimeError as e:
+                    self.logger.warning(f"GPU memory limit configuration failed: {e}")
+
+                # Set environment variables for XLA GPU compilation
+                os.environ['XLA_FLAGS'] = '--xla_gpu_cuda_data_dir=/usr/local/cuda'
+
+                self.logger.info(f"GPU setup completed successfully")
             else:
-                self.device = torch.device("cpu")
-                self.logger.info("Using CPU for PyTorch models")
+                self.logger.warning("No GPUs available")
 
         except Exception as e:
-            self.logger.error(f"Error setting up GPU: {e}")
-            self.device = torch.device("cpu")
+            self.logger.error(f"GPU setup error: {e}")
+            return False
+
+        return True
 
     def _get_default_configs(self) -> Dict:
         """Get default model configurations"""
