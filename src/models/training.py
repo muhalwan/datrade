@@ -9,16 +9,18 @@ from sklearn.model_selection import TimeSeriesSplit
 import numpy as np
 import json
 import torch
-
+from tensorflow.keras.models import Sequential
 from src.features.engineering import FeatureEngineering
 from .base import BaseModel, ModelConfig, ModelType, ModelMetrics
 from .lstm_model import LSTMModel
 from .lightgbm_model import LightGBMModel
 from .ensemble import EnsembleModel
+from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.optimizers import Adam
+import tensorflow as tf
+
 
 class ModelTrainer:
-    """Enhanced model training coordinator with advanced features"""
-
     def __init__(self, db_connection):
         self.logger = logging.getLogger(__name__)
         self.db = db_connection
@@ -26,51 +28,24 @@ class ModelTrainer:
         self.models: Dict[str, BaseModel] = {}
         self.training_history: Dict[str, Dict] = {}
 
-        # Create necessary directories
         for directory in ["models", "models/temp", "logs/training", "logs/tensorboard"]:
             Path(directory).mkdir(parents=True, exist_ok=True)
 
-        # Load configurations
         self.model_configs = self._load_model_configs()
-
-        # Initialize GPU settings
         self._setup_gpu()
 
     def _setup_gpu(self):
-        """Configure GPU settings properly"""
         try:
-            # Configure TensorFlow GPU
             gpus = tf.config.list_physical_devices('GPU')
             if gpus:
-                # Must be done before any GPU operations
                 for gpu in gpus:
-                    # Memory growth must be set before GPUs are initialized
                     tf.config.experimental.set_memory_growth(gpu, True)
-
-                try:
-                    # Configure memory limit (do this first)
-                    tf.config.set_logical_device_configuration(
-                        gpus[0],
-                        [tf.config.LogicalDeviceConfiguration(memory_limit=3072)]
-                    )
-                except RuntimeError as e:
-                    self.logger.warning(f"GPU memory limit configuration failed: {e}")
-
-                # Set environment variables for XLA GPU compilation
-                os.environ['XLA_FLAGS'] = '--xla_gpu_cuda_data_dir=/usr/local/cuda'
-
-                self.logger.info(f"GPU setup completed successfully")
-            else:
-                self.logger.warning("No GPUs available")
-
-        except Exception as e:
-            self.logger.error(f"GPU setup error: {e}")
+                return True
+            return False
+        except:
             return False
 
-        return True
-
     def _get_default_configs(self) -> Dict:
-        """Get default model configurations"""
         base_features = [
             'close', 'open', 'high', 'low', 'volume',
             'bb_high_20', 'bb_low_20',
@@ -125,7 +100,6 @@ class ModelTrainer:
         }
 
     def _process_configs(self, config: Dict) -> Dict:
-        """Process raw config into ModelConfig objects"""
         processed_configs = {}
 
         if 'models' not in config:
@@ -135,7 +109,6 @@ class ModelTrainer:
         for name, model_config in config['models'].items():
             if model_config.get('enabled', True):
                 try:
-                    # Create base config
                     base_config = ModelConfig(
                         name=name,
                         type=ModelType[model_config['type'].upper()],
@@ -147,7 +120,6 @@ class ModelTrainer:
                         cv_folds=model_config.get('cv_folds', 5)
                     )
 
-                    # Add GPU settings if applicable
                     if base_config.type == ModelType.LIGHTGBM and torch.cuda.is_available():
                         base_config.params.update({
                             'device': 'gpu',
@@ -168,7 +140,6 @@ class ModelTrainer:
         return processed_configs
 
     def create_model(self, config: ModelConfig) -> BaseModel:
-        """Create model instance with proper initialization"""
         try:
             if config.type == ModelType.LSTM:
                 return LSTMModel(config)
@@ -185,7 +156,6 @@ class ModelTrainer:
     def train_model_with_cv(self, model: BaseModel,
                             train_data: pd.DataFrame,
                             n_splits: int = 5) -> Dict[str, List[float]]:
-        """Train model with time series cross-validation"""
         try:
             cv_results = {
                 'train_metrics': [],
@@ -198,18 +168,15 @@ class ModelTrainer:
             for fold, (train_idx, val_idx) in enumerate(tscv.split(train_data), 1):
                 self.logger.info(f"Training fold {fold}/{n_splits}")
 
-                # Split data
                 fold_train = train_data.iloc[train_idx]
                 fold_val = train_data.iloc[val_idx]
 
-                # Train and validate
                 start_time = datetime.now()
                 model.train(fold_train)
                 train_metrics = model.validate(fold_train)
                 val_metrics = model.validate(fold_val)
                 fold_time = (datetime.now() - start_time).total_seconds()
 
-                # Store results
                 cv_results['train_metrics'].append(train_metrics)
                 cv_results['val_metrics'].append(val_metrics)
                 cv_results['fold_times'].append(fold_time)
@@ -226,68 +193,51 @@ class ModelTrainer:
             self.logger.error(f"Error in cross-validation: {str(e)}")
             raise
 
-    def train(self, symbol: str, train_data: pd.DataFrame,
-              test_data: pd.DataFrame = None) -> Dict[str, BaseModel]:
-        """Train all models with parallel processing"""
+    def train(self, symbol: str, train_data: pd.DataFrame, test_data: pd.DataFrame = None) -> Dict[str, BaseModel]:
         try:
             self.logger.info(f"Starting model training for {symbol}")
             trained_models = {}
 
-            # Convert data types to float
             numeric_cols = train_data.select_dtypes(include=['float64', 'int64']).columns
             train_data[numeric_cols] = train_data[numeric_cols].astype(np.float32)
             if test_data is not None:
                 test_data[numeric_cols] = test_data[numeric_cols].astype(np.float32)
 
-            # Train models in parallel
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                future_to_model = {}
+            for name, config in self.model_configs.items():
+                if not config.enabled:
+                    continue
 
-                for name, config in self.model_configs.items():
-                    if not config.enabled:
-                        continue
+                try:
+                    model = self.create_model(config)
 
-                    try:
-                        model = self.create_model(config)
+                    if config.cross_validation:
+                        cv_results = self.train_model_with_cv(
+                            model,
+                            train_data,
+                            config.cv_folds
+                        )
+                        self.training_history[name] = {'cv_results': cv_results}
+                    else:
+                        model.train(train_data)
 
-                        if config.cross_validation:
-                            future = executor.submit(
-                                self.train_model_with_cv,
-                                model,
-                                train_data,
-                                config.cv_folds
-                            )
-                        else:
-                            future = executor.submit(model.train, train_data)
+                    if test_data is not None:
+                        metrics = model.validate(test_data)
+                        self._log_model_metrics(name, metrics)
+                        self.training_history[name] = {'metrics': metrics}
 
-                        future_to_model[future] = (name, model)
-                    except Exception as e:
-                        self.logger.error(f"Error initializing {name} model: {str(e)}")
-                        continue
+                    trained_models[name] = model
 
-                # Collect results
-                for future in future_to_model:
-                    name, model = future_to_model[future]
-                    try:
-                        future.result()
-                        trained_models[name] = model
+                except Exception as e:
+                    self.logger.error(f"Error training {name} model: {str(e)}")
+                    continue
 
-                        # Evaluate if test data provided
-                        if test_data is not None:
-                            metrics = model.validate(test_data)
-                            self._log_model_metrics(name, metrics)
-
-                    except Exception as e:
-                        self.logger.error(f"Error training {name} model: {str(e)}")
-                        continue
-
-            # Create ensemble if multiple models trained successfully
             if len(trained_models) > 1:
                 try:
                     ensemble = self.create_ensemble(trained_models)
-                    if test_data is not None:
+                    if ensemble and test_data is not None:
                         metrics = ensemble.validate(test_data)
                         self._log_model_metrics('ensemble', metrics)
+                        self.training_history['ensemble'] = {'metrics': metrics}
                     trained_models['ensemble'] = ensemble
                 except Exception as e:
                     self.logger.error(f"Error creating ensemble: {str(e)}")
@@ -299,7 +249,6 @@ class ModelTrainer:
             raise
 
     def _log_model_metrics(self, model_name: str, metrics: ModelMetrics):
-        """Log comprehensive model metrics"""
         self.logger.info(f"\nMetrics for {model_name}:")
         self.logger.info(f"MSE: {metrics.mse:.4f}")
         self.logger.info(f"RMSE: {metrics.rmse:.4f}")
@@ -309,7 +258,6 @@ class ModelTrainer:
         self.logger.info(f"Training Time: {metrics.training_time:.2f}s")
 
     def create_ensemble(self, models: Dict[str, BaseModel]) -> Optional[EnsembleModel]:
-        """Create enhanced ensemble from trained models"""
         try:
             if len(models) < 1:
                 raise ValueError("No models available for ensemble")
@@ -330,7 +278,6 @@ class ModelTrainer:
 
             ensemble = EnsembleModel(config)
 
-            # Add successful models
             for name, model in models.items():
                 if name != 'ensemble':
                     ensemble.add_model(name, model, weight=1.0/len(models))
@@ -342,7 +289,6 @@ class ModelTrainer:
             return None
 
     def save_models(self, models: Dict[str, BaseModel], symbol: str) -> None:
-        """Save all models with metadata"""
         try:
             base_path = Path(f"models/{symbol}")
             base_path.mkdir(parents=True, exist_ok=True)
@@ -357,7 +303,6 @@ class ModelTrainer:
             raise
 
     def load_models(self, symbol: str) -> Dict[str, BaseModel]:
-        """Load all models for a symbol"""
         try:
             base_path = Path(f"models/{symbol}")
             if not base_path.exists():
@@ -384,7 +329,6 @@ class ModelTrainer:
             raise
 
     def get_model_metrics(self, symbol: str) -> Dict:
-        """Get all model metrics"""
         try:
             metrics = {}
             for name, history in self.training_history.items():
@@ -396,7 +340,6 @@ class ModelTrainer:
             return {}
 
     def _load_model_configs(self) -> Dict:
-        """Load and validate model configurations"""
         try:
             config_path = Path("config/model_config.yaml")
             if not config_path.exists():

@@ -10,6 +10,8 @@ import os
 from tensorflow.keras.optimizers import AdamW
 from .base import BaseModel, ModelConfig, ModelMetrics
 from src.utils.gpu_utils import setup_gpu, get_gpu_info
+from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.optimizers import Adam
 
 class LSTMModel(BaseModel):
     def __init__(self, config: ModelConfig):
@@ -44,34 +46,22 @@ class LSTMModel(BaseModel):
         # Clear any existing sessions
         tf.keras.backend.clear_session()
 
-    def build_model(self, input_shape: tuple) -> tf.keras.Model:
-        """Build LSTM model with proper device placement"""
-        with tf.device(self.device):
-            model = Sequential([
-                tf.keras.layers.InputLayer(input_shape=input_shape),
-                tf.keras.layers.LSTM(64, return_sequences=True),
-                tf.keras.layers.BatchNormalization(),
-                tf.keras.layers.Dropout(0.2),
-                tf.keras.layers.LSTM(32),
-                tf.keras.layers.BatchNormalization(),
-                tf.keras.layers.Dropout(0.1),
-                tf.keras.layers.Dense(16, activation='relu'),
-                tf.keras.layers.BatchNormalization(),
-                tf.keras.layers.Dense(1)
-            ])
+    def build_model(self, input_shape: tuple) -> Sequential:
+        model = Sequential([
+            LSTM(64, input_shape=input_shape, return_sequences=True),
+            Dropout(0.2),
+            LSTM(32),
+            Dropout(0.2),
+            Dense(16, activation='relu'),
+            Dense(1)
+        ])
 
-            optimizer = AdamW(
-                learning_rate=self.learning_rate,
-                weight_decay=self.weight_decay
-            )
-
-            model.compile(
-                optimizer=optimizer,
-                loss='huber',
-                metrics=['mse', 'mae']
-            )
-
-            return model
+        model.compile(
+            optimizer=Adam(learning_rate=0.001),
+            loss='mse',
+            metrics=['mae']
+        )
+        return model
 
     def preprocess(self, df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
         try:

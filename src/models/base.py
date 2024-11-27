@@ -28,14 +28,14 @@ class ModelMetrics:
     training_time: float
     timestamp: datetime
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         return {
-            'mse': self.mse,
-            'rmse': self.rmse,
-            'mae': self.mae,
-            'mape': self.mape,
-            'directional_accuracy': self.directional_accuracy,
-            'training_time': self.training_time,
+            'mse': float(self.mse),
+            'rmse': float(self.rmse),
+            'mae': float(self.mae),
+            'mape': float(self.mape),
+            'directional_accuracy': float(self.directional_accuracy),
+            'training_time': float(self.training_time),
             'timestamp': self.timestamp.isoformat()
         }
 

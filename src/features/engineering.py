@@ -84,7 +84,6 @@ class FeatureEngineering:
         """Comprehensive data preparation and cleaning"""
         try:
             df = df.copy()
-            self.logger.info(f"Initial data shape: {df.shape}")
 
             # Ensure timestamp is index and sorted
             if 'timestamp' in df.columns:
@@ -94,8 +93,11 @@ class FeatureEngineering:
             # Convert tick data to OHLCV if needed
             if 'price' in df.columns and 'quantity' in df.columns:
                 df_ohlcv = self._convert_to_ohlcv(df, freq)
-                if df_ohlcv is not None:
+                if df_ohlcv is not None and not df_ohlcv.empty:
                     df = df_ohlcv
+                else:
+                    self.logger.error("Failed to convert tick data to OHLCV format")
+                    return pd.DataFrame()
 
             # Ensure all required columns exist
             required_columns = ['open', 'high', 'low', 'close', 'volume']
@@ -103,13 +105,17 @@ class FeatureEngineering:
                 self.logger.error(f"Missing required columns. Found: {df.columns.tolist()}")
                 return pd.DataFrame()
 
-            # Clean numeric columns
+            # Convert numeric columns and clean
             numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
             for col in numeric_cols:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
                 df[col] = self._clean_series(df[col])
 
-            # Convert to float32 for memory efficiency
-            for col in numeric_cols:
+            # Remove rows with any NaN values
+            df = df.dropna()
+
+            # Convert everything to float32 for efficiency
+            for col in df.select_dtypes(include=['float64', 'int64']).columns:
                 df[col] = df[col].astype('float32')
 
             self.logger.info(f"Prepared data shape: {df.shape}")
@@ -128,31 +134,28 @@ class FeatureEngineering:
         return series
 
     def _convert_to_ohlcv(self, df: pd.DataFrame, freq: str = '1min') -> Optional[pd.DataFrame]:
-        """Convert tick data to OHLCV format"""
         try:
-            # Create OHLCV dataframe
-            ohlc = df['price'].resample(freq).agg({
-                'open': 'first',
-                'high': 'max',
-                'low': 'min',
-                'close': 'last'
-            })
-            volume = df['quantity'].resample(freq).sum().rename('volume')
+            price_data = df['price'].resample(freq)
+            volume_data = df['quantity'].resample(freq)
 
-            # Combine OHLCV data
-            df_ohlcv = pd.concat([ohlc, volume], axis=1)
+            df_ohlcv = pd.DataFrame()
+            df_ohlcv['open'] = price_data.first()
+            df_ohlcv['high'] = price_data.max()
+            df_ohlcv['low'] = price_data.min()
+            df_ohlcv['close'] = price_data.last()
+            df_ohlcv['volume'] = volume_data.sum()
 
-            # Add additional base price info
+            # Add some basic derived columns
             df_ohlcv['typical_price'] = (df_ohlcv['high'] + df_ohlcv['low'] + df_ohlcv['close']) / 3
             df_ohlcv['price_change'] = df_ohlcv['close'].diff()
+            df_ohlcv['returns'] = df_ohlcv['close'].pct_change()
 
-            # Fix the pct_change warning
-            df_ohlcv['returns'] = df_ohlcv['close'].pct_change(fill_method=None)
+            # Handle NaN values
+            df_ohlcv = df_ohlcv.dropna()
 
-            # Add time-based features
-            df_ohlcv['hour'] = df_ohlcv.index.hour
-            df_ohlcv['minute'] = df_ohlcv.index.minute
-            df_ohlcv['day_of_week'] = df_ohlcv.index.dayofweek
+            # Verify we got all the data
+            if df_ohlcv.empty:
+                raise ValueError("No valid OHLCV data after conversion")
 
             return df_ohlcv
 
@@ -161,44 +164,102 @@ class FeatureEngineering:
             return None
 
     def generate_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Generate features with proper error handling"""
         try:
+            # First prepare the data
+            df = self.prepare_data(df)
+            if df.empty:
+                return pd.DataFrame()
+
+            # Create features DataFrame starting with OHLCV data
             features = pd.DataFrame(index=df.index)
 
-            # Calculate returns first as it's needed by other features
-            df['returns'] = df['price'].pct_change()
+            # Keep original OHLCV columns
+            features['open'] = df['open']
+            features['high'] = df['high']
+            features['low'] = df['low']
+            features['close'] = df['close']
+            features['volume'] = df['volume']
 
-            # Generate each feature set
-            feature_sets = {
-                'price': self._calculate_price_features(df),
-                'volume': self._calculate_volume_features(df),
-                'volatility': self._calculate_volatility_features(df),
-                'trend': self._calculate_trend_features(df),
-                'momentum': self._calculate_momentum_features(df),
-                'pattern': self._calculate_pattern_features(df)
-            }
+            # Price features
+            features['returns'] = df['close'].pct_change(fill_method=None)
+            features['log_returns'] = np.log1p(features['returns'].fillna(0))
 
-            # Combine all feature sets
-            for name, feature_set in feature_sets.items():
-                if not feature_set.empty:
-                    features = pd.concat([features, feature_set], axis=1)
+            # Moving averages
+            for window in [7, 14, 21, 50, 200]:
+                features[f'sma_{window}'] = df['close'].rolling(window=window).mean()
+                features[f'ema_{window}'] = df['close'].ewm(span=window).mean()
 
-            # Remove duplicate columns
-            features = features.loc[:, ~features.columns.duplicated()]
+            # Volatility
+            features['volatility_30'] = df['close'].pct_change(fill_method=None).rolling(30).std()
 
-            # Handle missing values properly using newer pandas methods
-            features = features.ffill().bfill().fillna(0)
+            # Technical indicators
+            features['rsi'] = ta.momentum.rsi(close=df['close'], window=14)
 
-            # Ensure all required features exist
-            required_features = {
-                'macd', 'macd_signal', 'mfi', 'adx', 'vortex_pos',
-                'vortex_neg', 'volume_sma_30', 'mass_index'
-            }
+            macd = ta.trend.MACD(close=df['close'])
+            features['macd'] = macd.macd()
+            features['macd_signal'] = macd.macd_signal()
 
-            # Add missing features with zeros if they don't exist
-            missing = required_features - set(features.columns)
-            for feat in missing:
-                features[feat] = 0.0
+            bb = ta.volatility.BollingerBands(close=df['close'])
+            features['bb_high_20'] = bb.bollinger_hband()
+            features['bb_low_20'] = bb.bollinger_lband()
+
+            # Volume features
+            features['volume_sma_30'] = df['volume'].rolling(30).mean()
+            features['mfi'] = ta.volume.money_flow_index(
+                high=df['high'],
+                low=df['low'],
+                close=df['close'],
+                volume=df['volume']
+            )
+
+            # Trend indicators
+            features['adx'] = ta.trend.adx(
+                high=df['high'],
+                low=df['low'],
+                close=df['close']
+            )
+
+            vortex = ta.trend.VortexIndicator(
+                high=df['high'],
+                low=df['low'],
+                close=df['close']
+            )
+            features['vortex_pos'] = vortex.vortex_indicator_pos()
+            features['vortex_neg'] = vortex.vortex_indicator_neg()
+
+            # Additional indicators
+            features['ultimate_oscillator'] = ta.momentum.ultimate_oscillator(
+                high=df['high'],
+                low=df['low'],
+                close=df['close']
+            )
+
+            features['awesome_oscillator'] = ta.momentum.awesome_oscillator(
+                high=df['high'],
+                low=df['low']
+            )
+
+            features['mass_index'] = ta.trend.mass_index(
+                high=df['high'],
+                low=df['low']
+            )
+
+            stoch = ta.momentum.StochasticOscillator(
+                high=df['high'],
+                low=df['low'],
+                close=df['close']
+            )
+            features['stoch_k'] = stoch.stoch()
+            features['stoch_d'] = stoch.stoch_signal()
+
+            features['williams_r'] = ta.momentum.williams_r(
+                high=df['high'],
+                low=df['low'],
+                close=df['close']
+            )
+
+            # Fill any remaining NaN values with 0
+            features = features.fillna(0)
 
             return features
 

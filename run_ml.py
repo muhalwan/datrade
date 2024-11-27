@@ -339,7 +339,6 @@ class MLPipeline:
             self.cleanup()
 
     def _save_results(self, results: Dict):
-        """Save training results"""
         try:
             results_dir = Path("logs/results")
             results_dir.mkdir(parents=True, exist_ok=True)
@@ -347,8 +346,17 @@ class MLPipeline:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             results_path = results_dir / f"training_results_{timestamp}.json"
 
+            # Convert results to JSON serializable format
+            json_results = {}
+            for symbol, result in results.items():
+                if 'metrics' in result:
+                    result['metrics'] = {
+                        name: metrics.to_dict() for name, metrics in result['metrics'].items()
+                    }
+                json_results[symbol] = result
+
             with open(results_path, 'w') as f:
-                json.dump(results, f, indent=4)
+                json.dump(json_results, f, indent=4)
 
             self.logger.info(f"Results saved to {results_path}")
 

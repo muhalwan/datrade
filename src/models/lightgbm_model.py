@@ -161,22 +161,21 @@ class LightGBMModel(BaseModel):
             raise
 
     def _create_training_callback(self):
-        """Create custom training callback"""
         def callback(env):
             try:
                 if env.iteration % 100 == 0:
-                    metrics = {
-                        name: metrics[-1]
-                        for name, metrics in env.evaluation_result_list
-                    }
+                    results = {}
+                    for name, value, _, _ in env.evaluation_result_list:
+                        results[name] = value
+
                     self.training_history.append(
                         ModelMetrics(
-                            mse=metrics.get('l2', 0.0),
-                            rmse=np.sqrt(metrics.get('l2', 0.0)),
-                            mae=metrics.get('l1', 0.0),
-                            mape=metrics.get('mape', 0.0),
-                            directional_accuracy=metrics.get('binary_accuracy', 0.0),
-                            training_time=(datetime.now() - env.begin_time).total_seconds(),
+                            mse=results.get('train', 0.0),
+                            rmse=np.sqrt(results.get('train', 0.0)),
+                            mae=0.0,  # LightGBM doesn't provide MAE
+                            mape=0.0,  # LightGBM doesn't provide MAPE
+                            directional_accuracy=0.0,
+                            training_time=0.0,  # Can't get training time from callback
                             timestamp=datetime.now()
                         )
                     )
