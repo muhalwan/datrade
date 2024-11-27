@@ -12,6 +12,15 @@ from .base import BaseModel, ModelConfig, ModelMetrics
 from src.utils.gpu_utils import setup_gpu, get_gpu_info
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 from tensorflow.keras.optimizers import Adam
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TF warnings
+import tensorflow as tf
+physical_devices = tf.config.list_physical_devices('GPU')
+try:
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
+except:
+    pass
+
 
 class LSTMModel(BaseModel):
     def __init__(self, config: ModelConfig):
@@ -47,20 +56,22 @@ class LSTMModel(BaseModel):
         tf.keras.backend.clear_session()
 
     def build_model(self, input_shape: tuple) -> Sequential:
-        model = Sequential([
-            LSTM(64, input_shape=input_shape, return_sequences=True),
-            Dropout(0.2),
-            LSTM(32),
-            Dropout(0.2),
-            Dense(16, activation='relu'),
-            Dense(1)
-        ])
+        with tf.device('/CPU:0'):  # Force CPU to avoid CUDA issues
+            model = Sequential()
+            # Use Input layer first to avoid warning
+            model.add(tf.keras.layers.Input(shape=input_shape))
+            model.add(LSTM(64, return_sequences=True))
+            model.add(Dropout(0.2))
+            model.add(LSTM(32))
+            model.add(Dropout(0.2))
+            model.add(Dense(16, activation='relu'))
+            model.add(Dense(1))
 
-        model.compile(
-            optimizer=Adam(learning_rate=0.001),
-            loss='mse',
-            metrics=['mae']
-        )
+            model.compile(
+                optimizer=Adam(learning_rate=0.001),
+                loss='mse',
+                metrics=['mae']
+            )
         return model
 
     def preprocess(self, df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:

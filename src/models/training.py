@@ -4,21 +4,18 @@ from datetime import datetime
 import pandas as pd
 import yaml
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor
 from sklearn.model_selection import TimeSeriesSplit
 import numpy as np
 import json
 import torch
-from tensorflow.keras.models import Sequential
 from src.features.engineering import FeatureEngineering
 from .base import BaseModel, ModelConfig, ModelType, ModelMetrics
 from .lstm_model import LSTMModel
 from .lightgbm_model import LightGBMModel
 from .ensemble import EnsembleModel
-from tensorflow.keras.layers import LSTM, Dense, Dropout
-from tensorflow.keras.optimizers import Adam
 import tensorflow as tf
-
+import os
+os.environ["XLA_FLAGS"] = "--xla_gpu_cuda_data_dir=/usr/local/cuda"
 
 class ModelTrainer:
     def __init__(self, db_connection):
@@ -36,13 +33,26 @@ class ModelTrainer:
 
     def _setup_gpu(self):
         try:
+            # Set environment variable for CUDA directory
+            os.environ['XLA_FLAGS'] = '--xla_gpu_cuda_data_dir=/usr/local/cuda'
+
+            # Configure memory growth before any GPU operations
             gpus = tf.config.list_physical_devices('GPU')
             if gpus:
                 for gpu in gpus:
-                    tf.config.experimental.set_memory_growth(gpu, True)
+                    try:
+                        tf.config.experimental.set_memory_growth(gpu, True)
+                        # Limit GPU memory
+                        tf.config.set_logical_device_configuration(
+                            gpu,
+                            [tf.config.LogicalDeviceConfiguration(memory_limit=1024)]
+                        )
+                    except RuntimeError as e:
+                        self.logger.warning(f"GPU config error: {e}")
                 return True
             return False
-        except:
+        except Exception as e:
+            self.logger.error(f"GPU setup error: {e}")
             return False
 
     def _get_default_configs(self) -> Dict:

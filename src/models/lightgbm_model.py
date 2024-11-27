@@ -166,16 +166,17 @@ class LightGBMModel(BaseModel):
                 if env.iteration % 100 == 0:
                     results = {}
                     for name, value, _, _ in env.evaluation_result_list:
-                        results[name] = value
+                        results[name] = float(value)  # Convert to float explicitly
 
+                    train_rmse = float(results.get('train', 0.0))
                     self.training_history.append(
                         ModelMetrics(
-                            mse=results.get('train', 0.0),
-                            rmse=np.sqrt(results.get('train', 0.0)),
-                            mae=0.0,  # LightGBM doesn't provide MAE
-                            mape=0.0,  # LightGBM doesn't provide MAPE
+                            mse=train_rmse * train_rmse,  # Square RMSE to get MSE
+                            rmse=train_rmse,
+                            mae=float(results.get('l1', 0.0)),
+                            mape=0.0,
                             directional_accuracy=0.0,
-                            training_time=0.0,  # Can't get training time from callback
+                            training_time=0.0,
                             timestamp=datetime.now()
                         )
                     )
