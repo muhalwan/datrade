@@ -8,38 +8,58 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from typing import Dict, List, Optional
-
 from src.features.pipeline import FeaturePipelineManager
 from src.data.database.connection import MongoDBConnection
 from src.models.trainer import ModelTrainer
 from src.models.optimization import ModelOptimizer
 from src.models.analysis import ModelAnalyzer
-from src.config import settings
+from src.config import settings, MLConfig
+
 
 def setup_training():
     """Setup training environment"""
     logger = logging.getLogger(__name__)
 
-    # Setup database connection
-    db = MongoDBConnection({
-        'connection_string': settings.mongodb_uri,
-        'name': settings.db_name
-    })
+    try:
+        # Setup database connection
+        db = MongoDBConnection({
+            'connection_string': settings.mongodb_uri,
+            'name': settings.db_name
+        })
 
-    if not db.connect():
-        raise ConnectionError("Failed to connect to database")
+        if not db.connect():
+            raise ConnectionError("Failed to connect to database")
 
-    # Initialize feature pipeline
-    feature_pipeline = FeaturePipelineManager(db)
+        # Load ML config
+        ml_config_path = Path('config/ml_config.yaml')
+        if not ml_config_path.exists():
+            logger.warning("ML config not found, using defaults")
+            ml_config = None
+        else:
+            ml_config = MLConfig(str(ml_config_path))
 
-    # Initialize model trainer
-    model_trainer = ModelTrainer(feature_pipeline)
+        # Initialize feature pipeline
+        feature_pipeline = FeaturePipelineManager(
+            db=db,
+            indicator_config=ml_config.get('features.technical') if ml_config else None,
+            sentiment_config=ml_config.get('features.sentiment') if ml_config else None
+        )
 
-    # Initialize optimizer and analyzer
-    model_optimizer = ModelOptimizer(model_trainer, feature_pipeline)
-    model_analyzer = ModelAnalyzer(model_trainer)
+        # Initialize model trainer
+        model_trainer = ModelTrainer(
+            feature_pipeline=feature_pipeline,
+            config=ml_config.config if ml_config else None
+        )
 
-    return feature_pipeline, model_trainer, model_optimizer, model_analyzer
+        # Initialize optimizer and analyzer
+        model_optimizer = ModelOptimizer(model_trainer, feature_pipeline)
+        model_analyzer = ModelAnalyzer(model_trainer)
+
+        return feature_pipeline, model_trainer, model_optimizer, model_analyzer
+
+    except Exception as e:
+        logger.error(f"Setup error: {str(e)}")
+        raise
 
 def train_models(feature_pipeline, model_trainer, model_optimizer, model_analyzer,
                  start_date: datetime, end_date: datetime,

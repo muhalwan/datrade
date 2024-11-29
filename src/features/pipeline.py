@@ -62,11 +62,11 @@ class FeaturePipelineManager:
     def _get_latest_price_data(self) -> Optional[pd.DataFrame]:
         """Get latest price data from MongoDB"""
         try:
-            # Get last 1000 price points
             collection = self.db.get_collection('price_data')
             if collection is None:
                 return None
 
+            # Get last 1000 price points
             cursor = collection.find(
                 {},
                 sort=[('timestamp', -1)],
@@ -75,9 +75,18 @@ class FeaturePipelineManager:
 
             data = list(cursor)
             if not data:
+                self.logger.warning("No data found in database")
                 return None
 
             df = pd.DataFrame(data)
+
+            # Ensure required columns exist
+            required_columns = ['open', 'high', 'low', 'close', 'volume']
+            if not all(col in df.columns for col in required_columns):
+                missing = [col for col in required_columns if col not in df.columns]
+                self.logger.error(f"Missing required columns: {missing}")
+                return None
+
             df.set_index('timestamp', inplace=True)
             df.sort_index(inplace=True)
 
