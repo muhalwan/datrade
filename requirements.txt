@@ -1,3 +1,4 @@
+# Phase 1
 python-binance==1.0.22
 pymongo[srv]==4.3.3
 pandas==2.2.1
@@ -15,3 +16,17 @@ plotly>=5.18.0
 python-dotenv==1.0.0
 pydantic-settings>=2.0.0
 pydantic>=2.5.1
+# Phase 2
+scikit-learn>=1.4.0
+tensorflow>=2.15.0
+xgboost>=2.0.3
+prophet>=1.1.5
+ta>=0.11.0
+torch>=2.2.0
+optuna>=3.5.0
+lightgbm>=4.3.0
+nltk>=3.8.1
+textblob>=0.17.1
+beautifulsoup4>=4.12.3
+matplotlib>=3.8.2
+seaborn>=0.13.2
