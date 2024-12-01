@@ -1,13 +1,13 @@
 import logging
 import signal
 import sys
-from pathlib import Path
-from datetime import datetime
-import os
+import threading
+import asyncio
 import gc
 import time
-import asyncio
-import threading
+from datetime import datetime, timedelta
+from pathlib import Path
+import os
 from src.config import settings
 from src.data.collector import BinanceDataCollector
 from src.data.auth import BinanceAuth, AuthType
