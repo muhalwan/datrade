@@ -1,17 +1,35 @@
+# Base dependencies
 python-binance==1.0.22
 pymongo[srv]==4.3.3
 pandas==2.2.1
 numpy==1.26.4
-pyyaml>=6.0.1
-python-dateutil==2.8.2
-websocket-client==1.6.4
-urllib3==2.0.7
-dnspython>=2.4.0
-certifi>=2024.2.2
-requests>=2.31.0
-fake-useragent==1.4.0
-pyOpenSSL>=24.0.0
-plotly>=5.18.0
-python-dotenv==1.0.0
+
+# Configuration and environment
 pydantic-settings>=2.0.0
 pydantic>=2.5.1
+python-dotenv==1.0.0
+pyyaml>=6.0.1
+
+# Network and API
+requests>=2.31.0
+websocket-client==1.6.4
+urllib3==2.0.7
+pyOpenSSL>=24.0.0
+certifi>=2024.2.2
+fake-useragent==1.4.0
+
+# Date handling
+python-dateutil==2.8.2
+
+# MongoDB requirements
+dnspython>=2.4.0
+
+# New dependencies for improved stability
+asyncio==3.4.3
+psutil>=5.9.6
+nest-asyncio>=1.5.8
+aiosignal>=1.3.1
+async-timeout>=4.0.3
+
+# Remove plotly as it's not needed for data collection
+# plotly>=5.18.0
