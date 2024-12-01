@@ -68,7 +68,6 @@ class MongoDBConnection:
             self.connect()
         return self.db[collection_name] if self.db is not None else None
 
-
     def close(self):
         """Close MongoDB connection"""
         if self.client:

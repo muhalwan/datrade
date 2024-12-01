@@ -31,7 +31,7 @@ class DataValidator:
             else:
                 ts = pd.to_datetime(trade['timestamp'])
 
-            # Check if timestamp is reasonable (within last day and not in future)
+            # Check if timestamp is reasonable
             now = datetime.now()
             if ts > now + timedelta(minutes=1) or ts < now - timedelta(days=1):
                 self.logger.debug(f"Invalid timestamp in trade: {ts}")
@@ -69,7 +69,7 @@ class DataValidator:
                 self.logger.debug(f"Invalid side in order: {order['side']}")
                 return False
 
-            # Validate timestamp (should be within last minute)
+            # Validate timestamp
             if isinstance(order['timestamp'], (int, float)):
                 ts = pd.to_datetime(order['timestamp'], unit='ms')
             else:

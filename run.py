@@ -17,7 +17,6 @@ def setup_logging():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = log_dir / f"collector_{timestamp}.log"
 
-    # Configure logging
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -27,7 +26,6 @@ def setup_logging():
         ]
     )
 
-    # Set debug level for collector
     logging.getLogger('src.data.collector').setLevel(logging.DEBUG)
 
     return logging.getLogger(__name__)
@@ -43,7 +41,6 @@ def main():
     db = None
 
     try:
-        # Setup logging
         logger = setup_logging()
 
         # Register signal handlers

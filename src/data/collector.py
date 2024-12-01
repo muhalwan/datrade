@@ -119,10 +119,6 @@ class BinanceDataCollector:
                 self.logger.debug(f"Invalid message format: {type(msg)}")
                 return
 
-            # Log the raw message for debugging
-            self.logger.debug(f"Raw depth message: {msg}")
-
-            # Extract timestamp and symbol
             timestamp = datetime.fromtimestamp(int(msg.get('E', time.time() * 1000)) / 1000)
             symbol = msg.get('s', '')
 
@@ -134,12 +130,9 @@ class BinanceDataCollector:
             invalid = 0
 
             # Process bids
-            for bid in msg.get('b', []):  # Bids
+            for bid in msg.get('b', []):
                 if len(bid) >= 2:
                     try:
-                        # Log raw bid data
-                        self.logger.debug(f"Processing bid: price={bid[0]}, quantity={bid[1]}")
-
                         order_data = {
                             'timestamp': timestamp,
                             'symbol': symbol,
@@ -149,9 +142,8 @@ class BinanceDataCollector:
                             'update_id': msg.get('u', msg.get('U', 0))
                         }
 
-                        # If quantity is 0, it's a deletion
+                        # Handle deletion (quantity = 0)
                         if float(bid[1]) == 0:
-                            self.logger.debug(f"Deleting bid at price {bid[0]}")
                             self.orderbook_collection.delete_one({
                                 'symbol': symbol,
                                 'side': 'bid',
@@ -163,7 +155,6 @@ class BinanceDataCollector:
                         if self.validator.validate_orderbook(order_data):
                             cleaned_order = self.cleaner.clean_orderbook(order_data)
                             if cleaned_order:
-                                # Update or insert the order
                                 self.orderbook_collection.replace_one(
                                     {
                                         'symbol': symbol,
@@ -174,22 +165,17 @@ class BinanceDataCollector:
                                     upsert=True
                                 )
                                 updates += 1
-                                self.logger.debug(f"Successfully processed bid: {cleaned_order}")
                         else:
                             invalid += 1
-                            self.logger.debug(f"Invalid bid data: {order_data}")
 
                     except Exception as e:
                         self.logger.debug(f"Error processing bid: {e}")
                         invalid += 1
 
             # Process asks
-            for ask in msg.get('a', []):  # Asks
+            for ask in msg.get('a', []):
                 if len(ask) >= 2:
                     try:
-                        # Log raw ask data
-                        self.logger.debug(f"Processing ask: price={ask[0]}, quantity={ask[1]}")
-
                         order_data = {
                             'timestamp': timestamp,
                             'symbol': symbol,
@@ -199,9 +185,8 @@ class BinanceDataCollector:
                             'update_id': msg.get('u', msg.get('U', 0))
                         }
 
-                        # If quantity is 0, it's a deletion
+                        # Handle deletion (quantity = 0)
                         if float(ask[1]) == 0:
-                            self.logger.debug(f"Deleting ask at price {ask[0]}")
                             self.orderbook_collection.delete_one({
                                 'symbol': symbol,
                                 'side': 'ask',
@@ -213,7 +198,6 @@ class BinanceDataCollector:
                         if self.validator.validate_orderbook(order_data):
                             cleaned_order = self.cleaner.clean_orderbook(order_data)
                             if cleaned_order:
-                                # Update or insert the order
                                 self.orderbook_collection.replace_one(
                                     {
                                         'symbol': symbol,
@@ -224,10 +208,8 @@ class BinanceDataCollector:
                                     upsert=True
                                 )
                                 updates += 1
-                                self.logger.debug(f"Successfully processed ask: {cleaned_order}")
                         else:
                             invalid += 1
-                            self.logger.debug(f"Invalid ask data: {order_data}")
 
                     except Exception as e:
                         self.logger.debug(f"Error processing ask: {e}")
@@ -236,7 +218,6 @@ class BinanceDataCollector:
             self.stats['orderbook_updates'] += updates
             self.stats['orderbook_invalid'] += invalid
 
-            # Only print stats if we have updates
             if updates > 0 or invalid > 0:
                 self.print_stats()
 
@@ -265,14 +246,13 @@ class BinanceDataCollector:
             minute_ago = now - timedelta(minutes=1)
 
             for symbol in self.symbols:
-                # Get best bids
+                # Get best bids and asks
                 best_bids = list(self.orderbook_collection.find({
                     'symbol': symbol,
                     'side': 'bid',
                     'timestamp': {'$gte': minute_ago}
                 }).sort('price', -1).limit(5))
 
-                # Get best asks
                 best_asks = list(self.orderbook_collection.find({
                     'symbol': symbol,
                     'side': 'ask',
@@ -284,7 +264,6 @@ class BinanceDataCollector:
                     ask_price = best_asks[0]['price']
                     spread = ask_price - bid_price
 
-                    # Build detailed orderbook view
                     summary = f"\nOrderbook Summary for {symbol}:\n"
                     summary += f"Time: {now.strftime('%H:%M:%S.%f')[:-3]}\n"
                     summary += "\nTop 5 Bids:\n"
@@ -301,29 +280,8 @@ class BinanceDataCollector:
                 else:
                     self.logger.info(f"\nNo recent orderbook data for {symbol}")
 
-                    # Debug information
-                    total_bids = self.orderbook_collection.count_documents({
-                        'symbol': symbol,
-                        'side': 'bid'
-                    })
-                    total_asks = self.orderbook_collection.count_documents({
-                        'symbol': symbol,
-                        'side': 'ask'
-                    })
-                    self.logger.debug(f"Total bids in DB: {total_bids}")
-                    self.logger.debug(f"Total asks in DB: {total_asks}")
-
-                    # Check most recent entry
-                    latest = self.orderbook_collection.find_one(
-                        {'symbol': symbol},
-                        sort=[('timestamp', -1)]
-                    )
-                    if latest:
-                        self.logger.debug(f"Most recent entry: {latest}")
-
         except Exception as e:
             self.logger.error(f"Error printing orderbook summary: {str(e)}")
-            self.logger.debug(f"Error details:", exc_info=True)
 
     def start_data_collection(self):
         """Start data collection"""
@@ -350,8 +308,6 @@ class BinanceDataCollector:
                 )
 
             self.logger.info(f"Started data collection for symbols: {self.symbols}")
-
-            # Start monitoring thread
             self._start_monitoring()
 
         except Exception as e:
@@ -363,13 +319,8 @@ class BinanceDataCollector:
         def monitor_loop():
             while True:
                 try:
-                    # Wait a bit before first summary
                     time.sleep(10)
-
-                    # Print summary every 10 seconds
                     self.print_orderbook_summary()
-                    time.sleep(10)
-
                 except Exception as e:
                     self.logger.error(f"Monitor error: {e}")
                     time.sleep(5)
@@ -396,7 +347,6 @@ class BinanceDataCollector:
             self.websocket.stop()
             self.logger.info("Data collection stopped")
 
-            # Print final stats
             runtime = (datetime.now() - self.stats['start_time']).total_seconds() if self.stats['start_time'] else 0
             self.logger.info(
                 f"\nFinal Statistics after {int(runtime)}s:\n"
