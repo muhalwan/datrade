@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import List, Dict, Any
 import requests
@@ -61,12 +62,20 @@ class BinanceDataCollector:
         )
 
     def _setup_websocket(self) -> ThreadedWebsocketManager:
-        """Setup websocket manager"""
-        return ThreadedWebsocketManager(
-            api_key=self.auth.api_key,
-            api_secret=self.auth.secret_key,
-            testnet=self.use_testnet
-        )
+        """Setup websocket manager with proper event loop handling"""
+        try:
+            # Create new event loop for the thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            return ThreadedWebsocketManager(
+                api_key=self.auth.api_key,
+                api_secret=self.auth.secret_key,
+                testnet=self.use_testnet
+            )
+        except Exception as e:
+            self.logger.error(f"Error setting up websocket: {e}")
+            raise
 
     def _handle_socket_message(self, msg):
         """Handle incoming websocket messages"""
@@ -284,50 +293,93 @@ class BinanceDataCollector:
             self.logger.error(f"Error printing orderbook summary: {str(e)}")
 
     def start_data_collection(self):
-        """Start data collection"""
+        """Start data collection with improved error handling"""
         try:
             if not self._test_connection():
                 raise ConnectionError("Failed to connect to Binance API")
 
+            # Start websocket
             self.websocket.start()
             self.stats['start_time'] = datetime.now()
 
+            # Start streams for each symbol
             for symbol in self.symbols:
                 symbol_lower = symbol.lower()
-
-                # Individual streams
                 streams = [
-                    f"{symbol_lower}@trade",       # Trade stream
-                    f"{symbol_lower}@depth@100ms"  # Depth stream with 100ms updates
+                    f"{symbol_lower}@trade",
+                    f"{symbol_lower}@depth@100ms"
                 ]
 
-                # Start combined stream
-                self.websocket.start_multiplex_socket(
-                    callback=self._handle_socket_message,
-                    streams=streams
-                )
+                # Add retry logic for stream connection
+                max_retries = 3
+                for retry in range(max_retries):
+                    try:
+                        self.websocket.start_multiplex_socket(
+                            callback=self._handle_socket_message,
+                            streams=streams
+                        )
+                        break
+                    except Exception as e:
+                        if retry == max_retries - 1:
+                            raise
+                        self.logger.warning(f"Retry {retry + 1} for stream connection: {e}")
+                        time.sleep(1)
 
             self.logger.info(f"Started data collection for symbols: {self.symbols}")
+
+            # Start monitoring in separate thread
             self._start_monitoring()
 
         except Exception as e:
-            self.logger.error(f"Error starting data collection: {str(e)}")
+            self.logger.error(f"Error starting data collection: {e}")
+            self.stop()
             raise
 
     def _start_monitoring(self):
-        """Start monitoring in background thread"""
+        """Start monitoring with connection check"""
         def monitor_loop():
             while True:
                 try:
                     time.sleep(10)
+
+                    # Check MongoDB connection
+                    if not self._check_db_connection():
+                        self.logger.error("Lost MongoDB connection")
+                        break
+
+                    # Check WebSocket connection
+                    if not self._check_websocket_connection():
+                        self.logger.error("Lost WebSocket connection")
+                        break
+
+                    # Print summary if connections are good
                     self.print_orderbook_summary()
+
                 except Exception as e:
                     self.logger.error(f"Monitor error: {e}")
-                    time.sleep(5)
+                    break
 
-        import threading
-        monitor_thread = threading.Thread(target=monitor_loop, daemon=True)
-        monitor_thread.start()
+        self.monitor_thread = threading.Thread(target=monitor_loop, daemon=True)
+        self.monitor_thread.start()
+
+    def _check_db_connection(self) -> bool:
+        """Check MongoDB connection"""
+        try:
+            # Ping database
+            self.db.get_collection('price_data').find_one()
+            return True
+        except Exception as e:
+            self.logger.error(f"Database connection error: {e}")
+            return False
+
+    def _check_websocket_connection(self) -> bool:
+        """Check WebSocket connection"""
+        try:
+            if not self.websocket or not self.websocket._socket:
+                return False
+            return True
+        except Exception:
+            return False
 
     def _test_connection(self) -> bool:
         """Test API connection"""
@@ -342,21 +394,22 @@ class BinanceDataCollector:
             return False
 
     def stop(self):
-        """Stop data collection"""
+        """Stop data collection with cleanup"""
         try:
-            self.websocket.stop()
+            if hasattr(self, 'websocket'):
+                self.websocket.stop()
             self.logger.info("Data collection stopped")
 
-            runtime = (datetime.now() - self.stats['start_time']).total_seconds() if self.stats['start_time'] else 0
-            self.logger.info(
-                f"\nFinal Statistics after {int(runtime)}s:\n"
-                f"Total Trades: {self.stats['trades_processed']}\n"
-                f"Invalid Trades: {self.stats['trades_invalid']}\n"
-                f"Total Orderbook Updates: {self.stats['orderbook_updates']}\n"
-                f"Invalid Orderbook Updates: {self.stats['orderbook_invalid']}\n"
-                f"Total Errors: {self.stats['errors']}"
-            )
+            if hasattr(self, 'stats') and self.stats.get('start_time'):
+                runtime = (datetime.now() - self.stats['start_time']).total_seconds()
+                self.logger.info(
+                    f"\nFinal Statistics after {int(runtime)}s:\n"
+                    f"Total Trades: {self.stats['trades_processed']}\n"
+                    f"Invalid Trades: {self.stats['trades_invalid']}\n"
+                    f"Total Orderbook Updates: {self.stats['orderbook_updates']}\n"
+                    f"Invalid Orderbook Updates: {self.stats['orderbook_invalid']}\n"
+                    f"Total Errors: {self.stats['errors']}"
+                )
 
         except Exception as e:
-            self.logger.error(f"Error stopping collection: {str(e)}")
-            raise
+            self.logger.error(f"Error stopping collection: {e}")
