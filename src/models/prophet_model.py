@@ -18,37 +18,26 @@ class ProphetModel(BaseModel):
             'yearly_seasonality': True
         }
 
-    def train(self,
-              X: pd.DataFrame,
-              y: pd.Series) -> None:
-        """Train Prophet model"""
+    def train(self, X: pd.DataFrame, y: pd.Series) -> None:
+        """Train prophet model"""
         try:
-            # Prepare data for Prophet
+            # Format dates properly for Prophet
             df = pd.DataFrame({
-                'ds': X.index,
+                'ds': pd.to_datetime(X.index).strftime('%Y-%m-%d %H:%M:%S'),
                 'y': y
             })
 
-            # Initialize and train model
             self.model = Prophet(**self.params)
             self.model.fit(df)
-
         except Exception as e:
             self.logger.error(f"Error training Prophet: {e}")
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         """Make predictions with Prophet"""
         try:
-            # Prepare future dataframe
-            future = pd.DataFrame({'ds': X.index})
-
-            # Make predictions
+            future = pd.DataFrame({'ds': pd.to_datetime(X.index).strftime('%Y-%m-%d %H:%M:%S')})
             forecast = self.model.predict(future)
-
-            # Convert predictions to binary signals
-            predictions = (forecast['yhat'] > 0).astype(int).values
-
-            return predictions
+            return (forecast['yhat'] > 0).astype(int).values
         except Exception as e:
             self.logger.error(f"Error making Prophet predictions: {e}")
             return np.array([])
