@@ -6,6 +6,8 @@ class AuthType(Enum):
     HMAC = "hmac"
 
 class BinanceAuth:
+    """Authentication handler for Binance API"""
+
     def __init__(self, api_key: str, auth_type: AuthType, secret_key: Optional[str] = None):
         self.api_key = api_key
         self.auth_type = auth_type
