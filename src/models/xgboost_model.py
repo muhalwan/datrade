@@ -7,38 +7,31 @@ from .base import BaseModel
 
 class XGBoostModel(BaseModel):
     """XGBoost model for classification"""
-
     def __init__(self, params: Optional[Dict] = None):
         super().__init__("xgboost")
+        # Remove n_estimators from params and use num_boost_round in training
         self.params = params or {
             'objective': 'binary:logistic',
             'eval_metric': 'logloss',
             'max_depth': 6,
             'learning_rate': 0.1,
             'subsample': 0.8,
-            'colsample_bytree': 0.8,
-            'n_estimators': 100
+            'colsample_bytree': 0.8
         }
+        self.num_boost_rounds = 100
         self.scaler = StandardScaler()
 
-    def train(self,
-              X: pd.DataFrame,
-              y: pd.Series) -> None:
+    def train(self, X: pd.DataFrame, y: pd.Series) -> None:
         """Train XGBoost model"""
         try:
-            # Scale features
             X_scaled = self.scaler.fit_transform(X)
-
-            # Create DMatrix
             dtrain = xgb.DMatrix(X_scaled, label=y)
-
-            # Train model
+            # Use num_boost_round instead of n_estimators
             self.model = xgb.train(
                 self.params,
                 dtrain,
-                num_boost_round=self.params['n_estimators']
+                num_boost_round=self.num_boost_rounds
             )
-
         except Exception as e:
             self.logger.error(f"Error training XGBoost: {e}")
 

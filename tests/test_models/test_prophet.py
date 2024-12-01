@@ -5,7 +5,7 @@ from src.models.prophet_model import ProphetModel
 
 @pytest.fixture
 def sample_data():
-    dates = pd.date_range(start='2024-01-01', periods=100, freq='H')
+    dates = pd.date_range(start='2024-01-01', periods=100, freq='h')
     X = pd.DataFrame(np.random.randn(100, 5), index=dates)
     y = pd.Series(np.random.randint(0, 2, 100), index=dates)
     return X, y

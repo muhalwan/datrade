@@ -1,12 +1,9 @@
-from typing import List, Dict, Optional
 import pandas as pd
 import numpy as np
-from textblob import TextBlob
 import logging
 from datetime import datetime, timedelta
-import requests
-from bs4 import BeautifulSoup
-import json
+from typing import Optional, Dict, List
+from textblob import TextBlob
 
 class SentimentAnalyzer:
     """Analyzes market sentiment from various sources"""
@@ -33,27 +30,37 @@ class SentimentAnalyzer:
                                    news_data: Optional[List[Dict]] = None) -> pd.DataFrame:
         """Calculate overall market sentiment"""
         try:
-            sentiment_df = pd.DataFrame()
+            sentiment_df = pd.DataFrame(index=price_data.index)
 
-            # Price-based sentiment
+            # Calculate price momentum first to avoid dependency issues
             sentiment_df['price_momentum'] = self._calculate_price_momentum(price_data)
-            sentiment_df['volume_pressure'] = self._calculate_volume_pressure(price_data)
 
-            # Order book sentiment
+            # Add price-based sentiment
+            sentiment_df['returns'] = price_data['close'].pct_change()
+            sentiment_df['volume_pressure'] = self._calculate_volume_pressure(
+                price_data,
+                sentiment_df['returns']
+            )
+
+            # Add order book sentiment
             sentiment_df['order_book_imbalance'] = self._calculate_orderbook_imbalance(
                 orderbook_data
             )
 
-            # News sentiment if available
+            # Add news sentiment if available
             if news_data:
-                sentiment_df['news_sentiment'] = self._aggregate_news_sentiment(news_data)
+                news_sentiment = self._aggregate_news_sentiment(news_data)
+                if not news_sentiment.empty:
+                    sentiment_df['news_sentiment'] = news_sentiment
 
             # Normalize all features
             for column in sentiment_df.columns:
                 sentiment_df[column] = self._normalize_feature(sentiment_df[column])
 
             # Calculate composite sentiment
-            sentiment_df['composite_sentiment'] = sentiment_df.mean(axis=1)
+            feature_columns = [col for col in sentiment_df.columns if col != 'returns']
+            if feature_columns:
+                sentiment_df['composite_sentiment'] = sentiment_df[feature_columns].mean(axis=1)
 
             return sentiment_df
 
@@ -76,15 +83,15 @@ class SentimentAnalyzer:
             self.logger.error(f"Error calculating price momentum: {e}")
             return pd.Series()
 
-    def _calculate_volume_pressure(self, df: pd.DataFrame) -> pd.Series:
+    def _calculate_volume_pressure(self, df: pd.DataFrame, returns: pd.Series) -> pd.Series:
         """Calculate buying/selling pressure based on volume"""
         try:
-            # Calculate volume-weighted price changes
-            df['vol_price_change'] = df['price_change'] * df['volume']
+            # Calculate volume-weighted returns
+            volume_returns = returns * df['volume']
 
             # Calculate pressure using rolling window
             pressure = (
-                    df['vol_price_change'].rolling(window=20).sum() /
+                    volume_returns.rolling(window=20).sum() /
                     df['volume'].rolling(window=20).sum()
             )
 
@@ -96,14 +103,23 @@ class SentimentAnalyzer:
     def _calculate_orderbook_imbalance(self, df: pd.DataFrame) -> pd.Series:
         """Calculate order book imbalance"""
         try:
+            # Ensure timestamp column exists
+            if 'timestamp' not in df.columns:
+                self.logger.error("Timestamp column missing in orderbook data")
+                return pd.Series()
+
             # Group by timestamp and calculate bid/ask volumes
-            bid_volume = df[df['side'] == 'bid'].groupby('timestamp')['quantity'].sum()
-            ask_volume = df[df['side'] == 'ask'].groupby('timestamp')['quantity'].sum()
+            grouped = df.groupby(['timestamp', 'side'])['quantity'].sum().unstack()
 
             # Calculate imbalance ratio
-            imbalance = (bid_volume - ask_volume) / (bid_volume + ask_volume)
+            if 'bid' in grouped and 'ask' in grouped:
+                imbalance = (grouped['bid'] - grouped['ask']) / (grouped['bid'] + grouped['ask'])
+                imbalance.index = pd.to_datetime(imbalance.index)
+                return imbalance
+            else:
+                self.logger.error("Missing bid or ask data in orderbook")
+                return pd.Series()
 
-            return imbalance
         except Exception as e:
             self.logger.error(f"Error calculating orderbook imbalance: {e}")
             return pd.Series()
@@ -127,7 +143,17 @@ class SentimentAnalyzer:
     def _normalize_feature(self, series: pd.Series) -> pd.Series:
         """Normalize feature to [-1, 1] range"""
         try:
-            return 2 * (series - series.min()) / (series.max() - series.min()) - 1
+            if series.empty or series.isna().all():
+                return series
+
+            min_val = series.min()
+            max_val = series.max()
+
+            if min_val == max_val:
+                return pd.Series(0, index=series.index)
+
+            return 2 * (series - min_val) / (max_val - min_val) - 1
+
         except Exception as e:
             self.logger.error(f"Error normalizing feature: {e}")
             return series
