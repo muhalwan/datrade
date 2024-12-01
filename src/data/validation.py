@@ -104,7 +104,6 @@ class DataCleaner:
             return {
                 'timestamp': timestamp,
                 'symbol': str(trade['symbol']).upper(),
-                'trade_id': trade.get('t'),
                 'price': float(trade['price']),
                 'quantity': float(trade['quantity']),
                 'is_buyer_maker': bool(trade.get('m', False)),
