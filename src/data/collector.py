@@ -2,6 +2,7 @@ import asyncio
 import logging
 from typing import List, Dict, Any
 import requests
+import threading
 from binance.client import Client
 from binance.streams import ThreadedWebsocketManager
 from datetime import datetime, timedelta
@@ -49,6 +50,23 @@ class BinanceDataCollector:
         if self.price_collection is None or self.orderbook_collection is None:
             raise ConnectionError("Failed to connect to MongoDB collections")
 
+    def _start_monitoring(self):
+        """Start monitoring with proper thread handling"""
+        def monitor_loop():
+            while True:
+                try:
+                    time.sleep(10)
+                    if not self._check_db_connection() or not self._check_websocket_connection():
+                        self.logger.error("Connection check failed, exiting monitor...")
+                        break
+                    self.print_orderbook_summary()
+                except Exception as e:
+                    self.logger.error(f"Monitor error: {e}")
+                    break
+
+        self.monitor_thread = threading.Thread(target=monitor_loop, daemon=True)
+        self.monitor_thread.start()
+    
     def _setup_client(self) -> Client:
         """Setup Binance client"""
         return Client(
