@@ -17,7 +17,7 @@ from src.config import settings, MLConfig
 
 
 def setup_training():
-    """Setup training environment"""
+    """Setup training environment with data verification"""
     logger = logging.getLogger(__name__)
 
     try:
@@ -29,6 +29,15 @@ def setup_training():
 
         if not db.connect():
             raise ConnectionError("Failed to connect to database")
+
+        # Verify data before proceeding
+        from src.utils.verify_data import verify_ohlcv_data
+        verification = verify_ohlcv_data(db)
+
+        if verification["status"] != "success":
+            raise ValueError(f"Data verification failed: {verification['message']}")
+
+        logger.info(f"Data verification successful: {verification['document_count']} documents found")
 
         # Load ML config
         ml_config_path = Path('config/ml_config.yaml')

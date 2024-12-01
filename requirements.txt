@@ -1,62 +1,44 @@
-# API and Data Collection
+# Core Dependencies
+pip>=21.0.0
+setuptools>=65.5.1
+wheel>=0.38.0
+nest_asyncio==1.5.8
+
+# API and Exchange
 python-binance==1.0.16
 ccxt==2.9.11
-pymongo==4.3.3
-requests==2.31.0
 websockets==10.4
-python-dotenv==0.21.1
-
-# Data Processing and Analysis
-ta==0.10.2
-scipy~=1.7.3
-statsmodels==0.13.5
-numpy~=1.21.6
-pandas~=1.4.4
-
-# Machine Learning
-scikit-learn==1.0.2
-tensorflow==2.9.3
-keras==2.9.0
-xgboost==1.5.2
-prophet==1.1.4
-optuna==2.10.1
-holidays>=0.34
-
-# Natural Language Processing
-nltk==3.7
-transformers==4.21.1
-torch==1.13.1
-sentencepiece==0.1.99
-
-# Web Framework and API
-fastapi==0.95.2
-uvicorn==0.22.0
-python-multipart==0.0.6
-starlette==0.27.0
-jinja2==3.1.2
-
-# Visualization and Monitoring
-plotly==5.13.1
-dash==2.8.1
-matplotlib==3.5.3
-seaborn==0.12.2
-
-# Development and Testing
-pytest==7.3.1
-pytest-asyncio==0.21.0
-pytest-cov==4.0.0
-black==23.3.0
-flake8==6.0.0
-isort==5.12.0
-
-# Utilities
-pyyaml==6.0.1
-python-dateutil==2.8.2
-joblib==1.2.0
-tqdm==4.65.0
-pytz==2023.3
+requests==2.31.0
 aiohttp==3.8.5
 
-# Logging and Monitoring
-prometheus-client==0.17.0
-python-json-logger==2.0.7
+# Web Framework (Fixed versions for compatibility)
+fastapi==0.78.0
+uvicorn[standard]==0.18.3
+pydantic==1.9.2
+starlette==0.19.1
+python-multipart==0.0.6
+jinja2==3.1.2
+
+# Database
+pymongo==4.3.3
+
+# Data Processing
+numpy==1.21.6
+pandas==1.4.4
+python-dateutil==2.8.2
+pytz==2023.3
+
+# System Monitoring
+psutil==5.9.5
+
+# Visualization
+plotly==5.13.1
+
+# Configuration
+python-dotenv==0.21.1
+pyyaml==6.0.1
+
+# Development
+pytest==7.3.1
+black==23.3.0
+flake8==6.0.0

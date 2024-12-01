@@ -9,6 +9,9 @@ from pathlib import Path
 from datetime import datetime
 import uvicorn
 import os
+import asyncio
+import nest_asyncio
+
 from src.config import settings
 from src.data.collector import BinanceDataCollector
 from src.data.auth import BinanceAuth, AuthType
@@ -17,18 +20,47 @@ from src.monitoring.api import app
 from src.globals import set_collector, get_collector
 from src.utils.logging import setup_logging
 
+# Apply nest_asyncio
+nest_asyncio.apply()
 
 # Suppress TensorFlow warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 class TradingPlatform:
     """Main trading platform controller"""
+    def start_collection(self):
+        try:
+            self.logger.info("Starting data collection...")
+            self.collector.start_collection()
+            self.logger.info("Data collection started successfully")
+
+            # Add debug check for data insertion
+            time.sleep(10)  # Wait for some data to be collected
+            price_count = self.db.get_collection('price_data').count_documents({})
+            order_count = self.db.get_collection('order_book').count_documents({})
+            self.logger.info(f"After 10s: {price_count} trades, {order_count} orders collected")
+
+        except Exception as e:
+            self.logger.error(f"Collection start error: {str(e)}")
+            self.cleanup()
+
     def __init__(self):
         self.logger = setup_logging()
         self.collector = None
         self.db = None
         self.monitoring_thread = None
         self.is_running = True
+        self.loop = None
+
+    def setup_event_loop(self):
+        """Setup main event loop"""
+        try:
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
+        except Exception as e:
+            self.logger.error(f"Event loop setup error: {str(e)}")
+            return False
+        return True
 
     def setup_signal_handlers(self):
         """Setup signal handlers for graceful shutdown"""
@@ -78,7 +110,8 @@ class TradingPlatform:
                 auth=auth,
                 symbols=settings.trading_symbols,
                 db=self.db,
-                use_testnet=settings.use_testnet
+                use_testnet=settings.use_testnet,
+                batch_size=settings.batch_size
             )
 
             # Set global collector instance for monitoring
@@ -95,25 +128,26 @@ class TradingPlatform:
             return False
 
     def start_monitoring(self):
-        """Start monitoring dashboard"""
+        """Start monitoring dashboard with proper event loop"""
         def run_monitoring():
-            try:
-                uvicorn.run(
-                    app,
-                    host="0.0.0.0",
-                    port=8000,
-                    log_level="error",
-                    access_log=False
-                )
-            except Exception as e:
-                self.logger.error(f"Monitoring server error: {str(e)}")
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            config = uvicorn.Config(
+                app=app,
+                host=settings.monitoring_host,
+                port=settings.monitoring_port,
+                log_level="error",
+                loop=loop
+            )
+            server = uvicorn.Server(config)
+            loop.run_until_complete(server.serve())
 
         self.monitoring_thread = threading.Thread(
             target=run_monitoring,
             daemon=True
         )
         self.monitoring_thread.start()
-        self.logger.info("Monitoring dashboard started at http://localhost:8000")
+        self.logger.info(f"Monitoring dashboard started at http://{settings.monitoring_host}:{settings.monitoring_port}")
 
     def start_collection(self):
         """Start data collection"""
@@ -142,9 +176,25 @@ class TradingPlatform:
 
         self.logger.info("Cleanup complete")
 
+    def check_directories(self):
+        """Check and create required directories"""
+        try:
+            directories = ['logs', 'cache', 'data']
+            for directory in directories:
+                Path(directory).mkdir(exist_ok=True)
+            return True
+        except Exception as e:
+            self.logger.error(f"Directory setup error: {str(e)}")
+            return False
+
     def run(self):
         """Main run loop"""
         try:
+            # Setup event loop first
+            if not self.setup_event_loop():
+                self.logger.error("Event loop setup failed. Exiting...")
+                return
+
             # Setup signal handlers
             self.setup_signal_handlers()
 

@@ -1,22 +1,15 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 import logging
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.database import Database
 from pymongo.collection import Collection
 from pymongo.errors import ServerSelectionTimeoutError, PyMongoError
-import time
+from datetime import datetime, timedelta
 
 class MongoDBConnection:
     """MongoDB connection manager with proper initialization"""
 
     def __init__(self, config: Dict):
-        """Initialize MongoDB connection with configuration dictionary
-
-        Args:
-            config (Dict): Configuration dictionary with:
-                - connection_string: MongoDB connection URI
-                - name: Database name
-        """
         if not isinstance(config, dict):
             raise ValueError("Configuration must be a dictionary")
 
@@ -64,6 +57,10 @@ class MongoDBConnection:
                 ("timestamp", DESCENDING),
                 ("symbol", ASCENDING)
             ])
+            price_collection.create_index([
+                ("symbol", ASCENDING),
+                ("timestamp", DESCENDING)
+            ])
 
             # Order book indexes
             order_collection = self.db['order_book']
@@ -71,6 +68,11 @@ class MongoDBConnection:
                 ("timestamp", DESCENDING),
                 ("symbol", ASCENDING),
                 ("side", ASCENDING)
+            ])
+            order_collection.create_index([
+                ("symbol", ASCENDING),
+                ("side", ASCENDING),
+                ("timestamp", DESCENDING)
             ])
 
             self.logger.info("MongoDB indexes created successfully")
@@ -98,6 +100,61 @@ class MongoDBConnection:
         except Exception as e:
             self.logger.error(f"Error getting collection {collection_name}: {str(e)}")
             return None
+
+    def get_latest_data(self, collection_name: str,
+                        symbol: Optional[str] = None,
+                        limit: int = 1000) -> List[Dict]:
+        """Get latest data from collection"""
+        try:
+            collection = self.get_collection(collection_name)
+            if not collection:
+                return []
+
+            # Build query
+            query = {}
+            if symbol:
+                query['symbol'] = symbol
+
+            # Get latest documents
+            cursor = collection.find(
+                query,
+                sort=[('timestamp', DESCENDING)],
+                limit=limit
+            )
+
+            return list(cursor)
+
+        except Exception as e:
+            self.logger.error(f"Error getting latest data: {str(e)}")
+            return []
+
+    def get_data_range(self, collection_name: str,
+                       start_time: datetime,
+                       end_time: Optional[datetime] = None,
+                       symbol: Optional[str] = None) -> List[Dict]:
+        """Get data within time range"""
+        try:
+            collection = self.get_collection(collection_name)
+            if not collection:
+                return []
+
+            # Build query
+            query = {
+                "timestamp": {
+                    "$gte": start_time,
+                    "$lte": end_time or datetime.now()
+                }
+            }
+            if symbol:
+                query['symbol'] = symbol
+
+            # Get documents
+            cursor = collection.find(query).sort('timestamp', ASCENDING)
+            return list(cursor)
+
+        except Exception as e:
+            self.logger.error(f"Error getting data range: {str(e)}")
+            return []
 
     def validate_collections(self) -> bool:
         """Validate all required collections"""
