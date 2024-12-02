@@ -62,8 +62,25 @@ class DataCollectionMonitor:
             }
             orderbook_count = self.db.get_collection('order_book').count_documents(orderbook_query)
 
-            # Get data rate
-            price_data = pd.DataFrame(list(self.db.get_collection('price_data').find(price_query).sort('trade_time', 1)))
+            # Get all price data for OHLCV calculation
+            price_data = pd.DataFrame(list(self.db.get_collection('price_data').find(
+                {'symbol': symbol}).sort('trade_time', 1)))
+
+            # Calculate OHLCV periods
+            ohlcv_data = None
+            total_periods = 0
+            trainable_periods = 0
+            if not price_data.empty:
+                price_data['trade_time'] = pd.to_datetime(price_data['trade_time'])
+
+                # Convert to OHLCV
+                ohlcv_data = self._convert_trades_to_ohlcv(price_data)
+                total_periods = len(ohlcv_data) if ohlcv_data is not None else 0
+
+                # Calculate trainable periods (need at least 100 periods for training)
+                trainable_periods = max(0, total_periods - 100)
+
+            # Get data rate and status
             if not price_data.empty:
                 price_data['trade_time'] = pd.to_datetime(price_data['trade_time'])
                 data_rate = len(price_data) / hours
@@ -80,6 +97,10 @@ class DataCollectionMonitor:
                 'data_rate_per_hour': data_rate,
                 'last_update': last_update,
                 'time_since_last': time_since_last,
+                'total_ohlcv_periods': total_periods,
+                'trainable_periods': trainable_periods,
+                'oldest_data': ohlcv_data.index.min() if ohlcv_data is not None else None,
+                'newest_data': ohlcv_data.index.max() if ohlcv_data is not None else None,
                 'status': 'OK' if time_since_last < timedelta(minutes=5) else 'WARNING'
             }
 
@@ -92,6 +113,32 @@ class DataCollectionMonitor:
         except Exception as e:
             self.logger.error(f"Error checking data collection: {e}")
             return {}
+
+    def _convert_trades_to_ohlcv(self, trades_df: pd.DataFrame, timeframe: str = '5min') -> pd.DataFrame:
+        """Convert trade data to OHLCV format"""
+        try:
+            if trades_df.empty:
+                return None
+
+            # Set index to timestamp
+            df = trades_df.set_index('trade_time')
+
+            # Create OHLCV data
+            ohlcv = pd.DataFrame()
+            ohlcv['open'] = df['price'].resample(timeframe).first()
+            ohlcv['high'] = df['price'].resample(timeframe).max()
+            ohlcv['low'] = df['price'].resample(timeframe).min()
+            ohlcv['close'] = df['price'].resample(timeframe).last()
+            ohlcv['volume'] = df['quantity'].resample(timeframe).sum()
+
+            # Remove any rows with NaN values
+            ohlcv = ohlcv.dropna()
+
+            return ohlcv
+
+        except Exception as e:
+            self.logger.error(f"Error converting trades to OHLCV: {e}")
+            return None
 
     def plot_collection_status(self, symbol: str, hours: int = 24):
         """Plot data collection statistics"""
