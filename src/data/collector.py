@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import List, Dict, Any
 import requests
@@ -18,7 +19,7 @@ class BinanceDataCollector:
     """Optimized data collector for Binance exchange"""
 
     def __init__(self, auth: BinanceAuth, symbols: List[str], db: MongoDBConnection, use_testnet: bool = True):
-        """Initialize the Binance data collector"""
+        """Initialize with additional monitoring fields"""
         self.auth = auth
         self.symbols = symbols
         self.db = db
@@ -29,6 +30,9 @@ class BinanceDataCollector:
         self.validator = DataValidator()
         self.cleaner = DataCleaner()
 
+        # Add timestamp tracking
+        self.last_message_time = datetime.now()
+
         # Statistics
         self.stats = {
             'trades_processed': 0,
@@ -36,7 +40,8 @@ class BinanceDataCollector:
             'orderbook_updates': 0,
             'orderbook_invalid': 0,
             'errors': 0,
-            'start_time': None
+            'start_time': None,
+            'reconnects': 0
         }
 
         # Initialize connections
@@ -61,19 +66,34 @@ class BinanceDataCollector:
         )
 
     def _setup_websocket(self) -> ThreadedWebsocketManager:
-        """Setup websocket manager"""
-        return ThreadedWebsocketManager(
-            api_key=self.auth.api_key,
-            api_secret=self.auth.secret_key,
-            testnet=self.use_testnet
-        )
+        """Setup websocket manager with error handling"""
+        try:
+            # Create new event loop for this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            return ThreadedWebsocketManager(
+                api_key=self.auth.api_key,
+                api_secret=self.auth.secret_key,
+                testnet=self.use_testnet
+            )
+        except Exception as e:
+            self.logger.error(f"Error setting up websocket: {e}")
+            raise
 
     def _handle_socket_message(self, msg):
-        """Handle incoming websocket messages"""
+        """Handle incoming websocket messages with validation"""
         try:
             if isinstance(msg, dict):
                 data = msg.get('data', {})
                 stream = msg.get('stream', '')
+
+                # Update last message timestamp
+                self.last_message_time = datetime.now()
+
+                if not stream:
+                    self.logger.debug(f"Empty stream type in message: {msg}")
+                    return
 
                 if 'trade' in stream:
                     self._handle_trade_message(data)
@@ -315,19 +335,134 @@ class BinanceDataCollector:
             raise
 
     def _start_monitoring(self):
-        """Start monitoring in background thread"""
+        """Start monitoring in background thread with connection checking"""
         def monitor_loop():
+            consecutive_fails = 0
+            max_fails = 3
+
             while True:
                 try:
                     time.sleep(10)
-                    self.print_orderbook_summary()
+
+                    # Check if we're still receiving orderbook data
+                    now = datetime.now()
+                    minute_ago = now - timedelta(minutes=1)
+
+                    recent_orders = self.orderbook_collection.count_documents({
+                        'timestamp': {'$gte': minute_ago}
+                    })
+
+                    if recent_orders == 0:
+                        consecutive_fails += 1
+                        self.logger.warning(f"No recent orderbook data (fail {consecutive_fails}/{max_fails})")
+
+                        if consecutive_fails >= max_fails:
+                            self.logger.error("Connection appears to be lost, restarting streams...")
+                            self._restart_streams()
+                            consecutive_fails = 0
+                    else:
+                        consecutive_fails = 0
+                        self.print_orderbook_summary()
+
                 except Exception as e:
                     self.logger.error(f"Monitor error: {e}")
                     time.sleep(5)
 
         import threading
-        monitor_thread = threading.Thread(target=monitor_loop, daemon=True)
-        monitor_thread.start()
+        self.monitor_thread = threading.Thread(target=monitor_loop, daemon=True)
+        self.monitor_thread.start()
+
+    def _restart_streams(self):
+        """Restart WebSocket streams with proper cleanup"""
+        try:
+            # Stop existing websocket
+            try:
+                self.websocket.stop()
+                time.sleep(1)
+            except Exception as e:
+                self.logger.warning(f"Error stopping websocket: {e}")
+
+            # Clean up old event loop if exists
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.stop()
+                loop.close()
+            except Exception as e:
+                self.logger.warning(f"Error cleaning up event loop: {e}")
+
+            # Set up new event loop
+            asyncio.set_event_loop(asyncio.new_event_loop())
+
+            # Create new websocket
+            self.websocket = ThreadedWebsocketManager(
+                api_key=self.auth.api_key,
+                api_secret=self.auth.secret_key,
+                testnet=self.use_testnet
+            )
+
+            # Start new websocket
+            self.websocket.start()
+            time.sleep(1)  # Wait for connection
+
+            # Restart streams
+            for symbol in self.symbols:
+                symbol_lower = symbol.lower()
+                streams = [
+                    f"{symbol_lower}@trade",
+                    f"{symbol_lower}@depth@100ms"
+                ]
+
+                # Add retry logic for stream connection
+                max_retries = 3
+                for retry in range(max_retries):
+                    try:
+                        self.websocket.start_multiplex_socket(
+                            callback=self._handle_socket_message,
+                            streams=streams
+                        )
+                        break
+                    except Exception as e:
+                        if retry == max_retries - 1:
+                            raise
+                        self.logger.warning(f"Retry {retry + 1} for stream connection: {e}")
+                        time.sleep(1)
+
+            self.logger.info("Successfully restarted WebSocket streams")
+            self.stats['reconnects'] += 1
+
+        except Exception as e:
+            self.logger.error(f"Error restarting streams: {e}", exc_info=True)
+            # Force complete restart if stream restart fails
+            self.force_restart()
+
+    def force_restart(self):
+        """Force a complete restart of the collector"""
+        try:
+            self.logger.warning("Forcing complete collector restart...")
+
+            # Stop everything
+            self.stop()
+            time.sleep(2)
+
+            # Reset event loop
+            asyncio.set_event_loop(asyncio.new_event_loop())
+
+            # Reinitialize connections
+            self.client = self._setup_client()
+            self.websocket = self._setup_websocket()
+
+            # Test connection
+            if not self._test_connection():
+                raise ConnectionError("Failed to reconnect to Binance API")
+
+            # Restart data collection
+            self.start_data_collection()
+            self.logger.info("Successfully performed complete restart")
+
+        except Exception as e:
+            self.logger.error(f"Error during force restart: {e}")
+            raise
 
     def _test_connection(self) -> bool:
         """Test API connection"""
@@ -342,20 +477,37 @@ class BinanceDataCollector:
             return False
 
     def stop(self):
-        """Stop data collection"""
+        """Stop data collection with improved cleanup"""
         try:
-            self.websocket.stop()
+            # Stop websocket
+            if hasattr(self, 'websocket'):
+                try:
+                    self.websocket.stop()
+                except Exception as e:
+                    self.logger.warning(f"Error stopping websocket: {e}")
+
+            # Clean up event loop
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.stop()
+                loop.close()
+            except Exception as e:
+                self.logger.warning(f"Error cleaning up event loop: {e}")
+
             self.logger.info("Data collection stopped")
 
-            runtime = (datetime.now() - self.stats['start_time']).total_seconds() if self.stats['start_time'] else 0
-            self.logger.info(
-                f"\nFinal Statistics after {int(runtime)}s:\n"
-                f"Total Trades: {self.stats['trades_processed']}\n"
-                f"Invalid Trades: {self.stats['trades_invalid']}\n"
-                f"Total Orderbook Updates: {self.stats['orderbook_updates']}\n"
-                f"Invalid Orderbook Updates: {self.stats['orderbook_invalid']}\n"
-                f"Total Errors: {self.stats['errors']}"
-            )
+            if hasattr(self, 'stats') and self.stats.get('start_time'):
+                runtime = (datetime.now() - self.stats['start_time']).total_seconds()
+                self.logger.info(
+                    f"\nFinal Statistics after {int(runtime)}s:\n"
+                    f"Total Trades: {self.stats['trades_processed']}\n"
+                    f"Invalid Trades: {self.stats['trades_invalid']}\n"
+                    f"Total Orderbook Updates: {self.stats['orderbook_updates']}\n"
+                    f"Invalid Orderbook Updates: {self.stats['orderbook_invalid']}\n"
+                    f"Total Reconnects: {self.stats.get('reconnects', 0)}\n"
+                    f"Total Errors: {self.stats['errors']}"
+                )
 
         except Exception as e:
             self.logger.error(f"Error stopping collection: {str(e)}")
