@@ -109,18 +109,30 @@ class FeatureProcessor:
             # Then backward fill any remaining NaNs
             features = features.bfill()
 
+            # Drop any columns that are all NaN
+            features = features.dropna(axis=1, how='all')
+
             # Find valid rows (non-NaN)
             valid_rows = features.notna().all(axis=1) & target.notna()
+            valid_count = valid_rows.sum()
 
-            if not valid_rows.any():
-                self.logger.error("No valid rows after cleaning")
+            self.logger.info(f"Valid rows before cleaning: {len(features)}")
+            self.logger.info(f"Valid rows after cleaning: {valid_count}")
+
+            if valid_count < 100:  # Minimum required data points
+                self.logger.error(f"Insufficient valid rows after cleaning: {valid_count}")
                 return pd.DataFrame(), pd.Series()
 
             # Filter data
             features = features[valid_rows]
             target = target[valid_rows]
 
-            self.logger.info(f"Valid rows after cleaning: {len(features)}")
+            # Remove features with low variance
+            feature_std = features.std()
+            valid_features = feature_std[feature_std > 0].index
+            features = features[valid_features]
+
+            self.logger.info(f"Features remaining after variance check: {len(features.columns)}")
 
             return features, target
 
