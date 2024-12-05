@@ -1,3 +1,5 @@
+import logging
+
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
@@ -123,11 +125,12 @@ class TradingVisualizer:
             # Calculate strategy returns using numpy
             strategy_returns = returns * y_pred[:-1]  # Align lengths
 
-            # Create equity curves
+            # Create equity curves - Use features.index[1:] to match returns length
+            index = features.index[1:len(returns)+1]  # Align index with returns
             equity_curve = pd.DataFrame({
                 'Buy & Hold': (1 + returns).cumprod(),
                 'Strategy': (1 + strategy_returns).cumprod()
-            }, index=features.index[1:])  # Skip first point due to returns calculation
+            }, index=index)
 
             figures['equity'] = px.line(
                 equity_curve,
@@ -135,11 +138,14 @@ class TradingVisualizer:
                 labels={'value': 'Cumulative Return', 'variable': 'Strategy'}
             )
 
-            # Feature importance - use numpy correlations
+            # Feature importance - align features with returns
             feature_importance = {}
-            for col in features.columns:
-                if features[col].dtype in ['float64', 'int64']:
-                    correlation = np.corrcoef(features[col].values, returns)[0, 1]
+            features_aligned = features.iloc[1:len(returns)+1]  # Skip first row and align with returns
+            for col in features_aligned:
+                # Check dtype of individual series/column
+                if pd.api.types.is_numeric_dtype(features_aligned[col]):
+                    # Ensure same length for correlation
+                    correlation = np.corrcoef(features_aligned[col].values, returns)[0, 1]
                     feature_importance[col] = abs(correlation) if not np.isnan(correlation) else 0
 
             feature_importance = pd.Series(feature_importance).sort_values(ascending=True)
@@ -151,12 +157,12 @@ class TradingVisualizer:
                 title='Feature Importance (Correlation with Returns)'
             )
 
-            # Calculate rolling metrics using numpy operations
+            # Calculate rolling metrics using aligned data
             window = min(len(returns) // 10, 50)
-            rolling_metrics = pd.DataFrame()
+            rolling_metrics = pd.DataFrame(index=index)
 
             # Win rate calculation
-            rolling_metrics['Win Rate'] = pd.Series(strategy_returns > 0).rolling(window).mean()
+            rolling_metrics['Win Rate'] = pd.Series(strategy_returns > 0, index=index).rolling(window).mean()
 
             # Sharpe ratio calculation (safe division)
             def rolling_sharpe(x):
@@ -167,7 +173,7 @@ class TradingVisualizer:
                     return 0
                 return np.sqrt(252) * np.mean(x) / std
 
-            rolling_metrics['Sharpe'] = pd.Series(strategy_returns).rolling(window).apply(rolling_sharpe)
+            rolling_metrics['Sharpe'] = pd.Series(strategy_returns, index=index).rolling(window).apply(rolling_sharpe)
 
             figures['metrics'] = px.line(
                 rolling_metrics,
@@ -185,13 +191,13 @@ class TradingVisualizer:
                     nbins=50
                 )
 
-            # Drawdown calculation using numpy
+            # Drawdown calculation using aligned data
             cum_returns = (1 + strategy_returns).cumprod()
             rolling_max = np.maximum.accumulate(cum_returns)
             drawdown = (cum_returns - rolling_max) / rolling_max
 
             figures['drawdown'] = px.line(
-                pd.Series(drawdown, index=features.index[1:]),
+                pd.Series(drawdown, index=index),
                 title='Strategy Drawdown',
                 labels={'value': 'Drawdown', 'index': 'Date'}
             )
