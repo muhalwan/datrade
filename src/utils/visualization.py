@@ -108,73 +108,104 @@ class TradingVisualizer:
         """Create comprehensive performance visualization"""
         figures = {}
 
-        # 1. Returns and equity curve
-        returns = pd.Series(np.diff(prices) / prices[:-1])
-        strategy_returns = returns * y_pred[:-1]
+        try:
+            # Convert to numpy arrays to avoid Series ambiguity
+            if isinstance(prices, pd.Series):
+                prices = prices.values
 
-        equity_curve = pd.DataFrame({
-            'Buy & Hold': (1 + returns).cumprod(),
-            'Strategy': (1 + strategy_returns).cumprod()
-        })
+            # Ensure all inputs are numpy arrays
+            y_true = np.asarray(y_true)
+            y_pred = np.asarray(y_pred)
 
-        figures['equity'] = px.line(
-            equity_curve,
-            title='Strategy Performance',
-            labels={'value': 'Cumulative Return', 'variable': 'Strategy'}
-        )
+            # Calculate returns properly
+            returns = np.diff(prices) / prices[:-1]
 
-        # 2. Feature importance (using correlation with returns)
-        feature_importance = pd.Series({
-            col: abs(features[col].corr(returns))
-            for col in features.columns
-        }).sort_values(ascending=True)
+            # Calculate strategy returns using numpy
+            strategy_returns = returns * y_pred[:-1]  # Align lengths
 
-        figures['features'] = px.bar(
-            x=feature_importance.values,
-            y=feature_importance.index,
-            orientation='h',
-            title='Feature Importance (Correlation with Returns)'
-        )
+            # Create equity curves
+            equity_curve = pd.DataFrame({
+                'Buy & Hold': (1 + returns).cumprod(),
+                'Strategy': (1 + strategy_returns).cumprod()
+            }, index=features.index[1:])  # Skip first point due to returns calculation
 
-        # 3. Rolling metrics
-        window = min(len(returns) // 10, 50)  # Dynamic window size
-        rolling_metrics = pd.DataFrame({
-            'Win Rate': strategy_returns.rolling(window).apply(
-                lambda x: np.mean(x > 0)
-            ),
-            'Sharpe': strategy_returns.rolling(window).apply(
-                lambda x: np.sqrt(252) * np.mean(x) / np.std(x)
-                if np.std(x) != 0 else 0
+            figures['equity'] = px.line(
+                equity_curve,
+                title='Strategy Performance',
+                labels={'value': 'Cumulative Return', 'variable': 'Strategy'}
             )
-        })
 
-        figures['metrics'] = px.line(
-            rolling_metrics,
-            title=f'Rolling Metrics ({window} periods)',
-            labels={'value': 'Metric Value', 'variable': 'Metric'}
-        )
+            # Feature importance - use numpy correlations
+            feature_importance = {}
+            for col in features.columns:
+                if features[col].dtype in ['float64', 'int64']:
+                    correlation = np.corrcoef(features[col].values, returns)[0, 1]
+                    feature_importance[col] = abs(correlation) if not np.isnan(correlation) else 0
 
-        # 4. Trade distribution
-        trade_returns = strategy_returns[strategy_returns != 0]
-        figures['distribution'] = px.histogram(
-            trade_returns,
-            title='Trade Return Distribution',
-            labels={'value': 'Return', 'count': 'Frequency'},
-            nbins=50
-        )
+            feature_importance = pd.Series(feature_importance).sort_values(ascending=True)
 
-        # 5. Drawdown analysis
-        cum_returns = (1 + strategy_returns).cumprod()
-        rolling_max = cum_returns.expanding().max()
-        drawdown = (cum_returns - rolling_max) / rolling_max
+            figures['features'] = px.bar(
+                x=feature_importance.values,
+                y=feature_importance.index,
+                orientation='h',
+                title='Feature Importance (Correlation with Returns)'
+            )
 
-        figures['drawdown'] = px.line(
-            drawdown,
-            title='Strategy Drawdown',
-            labels={'value': 'Drawdown', 'index': 'Date'}
-        )
+            # Calculate rolling metrics using numpy operations
+            window = min(len(returns) // 10, 50)
+            rolling_metrics = pd.DataFrame()
 
-        return figures
+            # Win rate calculation
+            rolling_metrics['Win Rate'] = pd.Series(strategy_returns > 0).rolling(window).mean()
+
+            # Sharpe ratio calculation (safe division)
+            def rolling_sharpe(x):
+                if len(x) < 2:
+                    return 0
+                std = np.std(x)
+                if std == 0:
+                    return 0
+                return np.sqrt(252) * np.mean(x) / std
+
+            rolling_metrics['Sharpe'] = pd.Series(strategy_returns).rolling(window).apply(rolling_sharpe)
+
+            figures['metrics'] = px.line(
+                rolling_metrics,
+                title=f'Rolling Metrics ({window} periods)',
+                labels={'value': 'Metric Value', 'variable': 'Metric'}
+            )
+
+            # Trade distribution (non-zero returns only)
+            trade_returns = strategy_returns[strategy_returns != 0]
+            if len(trade_returns) > 0:
+                figures['distribution'] = px.histogram(
+                    trade_returns,
+                    title='Trade Return Distribution',
+                    labels={'value': 'Return', 'count': 'Frequency'},
+                    nbins=50
+                )
+
+            # Drawdown calculation using numpy
+            cum_returns = (1 + strategy_returns).cumprod()
+            rolling_max = np.maximum.accumulate(cum_returns)
+            drawdown = (cum_returns - rolling_max) / rolling_max
+
+            figures['drawdown'] = px.line(
+                pd.Series(drawdown, index=features.index[1:]),
+                title='Strategy Drawdown',
+                labels={'value': 'Drawdown', 'index': 'Date'}
+            )
+
+            return figures
+
+        except Exception as e:
+            logging.error(f"Error in plot_model_performance: {e}")
+            return {'error': go.Figure().add_annotation(
+                text=f"Error generating plots: {str(e)}",
+                showarrow=False,
+                xref="paper",
+                yref="paper"
+            )}
 
     @staticmethod
     def plot_feature_analysis(features: pd.DataFrame, returns: pd.Series) -> Dict[str, go.Figure]:

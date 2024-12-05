@@ -188,8 +188,8 @@ def train_models(price_data: pd.DataFrame, orderbook_data: pd.DataFrame, symbol:
         figures = viz.plot_model_performance(
             y_test.values,
             test_predictions,
-            price_data['close'][train_end:],
-            features[train_end:]
+            price_data['close'][train_end:].values,
+            X_test  # Pass the test features
         )
 
         # Save model
@@ -203,13 +203,15 @@ def train_models(price_data: pd.DataFrame, orderbook_data: pd.DataFrame, symbol:
         fig_dir = Path("models/figures")
         fig_dir.mkdir(exist_ok=True, parents=True)
         for name, fig in figures.items():
-            fig.write_html(str(fig_dir / f"{name}.html"))
+            if fig is not None:  # Add null check
+                fig.write_html(str(fig_dir / f"{name}.html"))
         logger.info(f"Figures saved to {fig_dir}")
 
         return model, figures, (train_metrics, test_metrics)
 
     except Exception as e:
         logger.error(f"Error in model training: {e}")
+        logger.exception("Detailed error:")  # Add stack trace
         return None, None, None
 
 def main():
