@@ -1,188 +1,289 @@
-from typing import Dict, List, Optional
+# src/models/xgboost_model.py
+
 import numpy as np
 import pandas as pd
-import logging
+from typing import Optional, Dict, List
+import xgboost as xgb
+from sklearn.preprocessing import StandardScaler
+from .base import BaseModel
+
+class XGBoostModel(BaseModel):
+    """XGBoost model with advanced features"""
+
+    def __init__(self, params: Optional[Dict] = None):
+        super().__init__("xgboost")
+
+        self.params = params or {
+            'objective': 'binary:logistic',
+            'eval_metric': 'logloss',
+            'max_depth': 4,
+            'learning_rate': 0.05,
+            'subsample': 0.8,
+            'colsample_bytree': 0.8,
+            'min_child_weight': 3,
+            'gamma': 0.1,
+            'reg_alpha': 0.1,
+            'reg_lambda': 1.0,
+            'scale_pos_weight': 1.0
+        }
+
+        self.num_boost_rounds = 1000
+        self.early_stopping_rounds = 50
+        self.scaler = StandardScaler()
+        self.model = None
+        self.feature_names: List[str] = []
+
+    def train(self, X: pd.DataFrame, y: pd.Series, validation_split: float = 0.2) -> None:
+        """Train XGBoost model with validation"""
+        try:
+            # Store feature names
+            self.feature_names = X.columns.tolist()
+
+            # Scale features
+            X_scaled = self.scaler.fit_transform(X)
+
+            # Split data
+            split_idx = int(len(X) * (1 - validation_split))
+            X_train = X_scaled[:split_idx]
+            y_train = y[:split_idx]
+            X_val = X_scaled[split_idx:]
+            y_val = y[split_idx:]
+
+            # Create DMatrix objects
+            dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=self.feature_names)
+            dval = xgb.DMatrix(X_val, label=y_val, feature_names=self.feature_names)
+
+            # Setup evaluation list
+            evallist = [(dtrain, 'train'), (dval, 'eval')]
+
+            # Train model
+            self.model = xgb.train(
+                self.params,
+                dtrain,
+                num_boost_round=self.num_boost_rounds,
+                evals=evallist,
+                early_stopping_rounds=self.early_stopping_rounds,
+                verbose_eval=False
+            )
+
+            # Store training history
+            self.training_history = {
+                'best_iteration': self.model.best_iteration,
+                'best_score': self.model.best_score
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error training XGBoost: {e}")
+            self.model = None
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        """Make predictions with XGBoost"""
+        try:
+            if self.model is None:
+                return np.zeros(len(X))
+
+            # Scale features
+            X_scaled = self.scaler.transform(X)
+
+            # Create DMatrix
+            dtest = xgb.DMatrix(X_scaled, feature_names=self.feature_names)
+
+            # Make predictions
+            return self.model.predict(dtest)
+
+        except Exception as e:
+            self.logger.error(f"Error making XGBoost predictions: {e}")
+            return np.zeros(len(X))
+
+    def get_feature_importance(self) -> Dict[str, float]:
+        """Get feature importance scores"""
+        try:
+            if self.model is None:
+                return {}
+
+            # Get importance scores
+            scores = self.model.get_score(importance_type='gain')
+
+            # Normalize scores
+            total = sum(scores.values())
+            if total > 0:
+                scores = {k: v/total for k, v in scores.items()}
+
+            return scores
+
+        except Exception as e:
+            self.logger.error(f"Error getting feature importance: {e}")
+            return {}
+
+# src/models/ensemble.py
+
+from typing import Dict, List, Optional, Tuple
+import numpy as np
+import pandas as pd
 from sklearn.model_selection import TimeSeriesSplit
-from sklearn.feature_selection import SelectKBest, mutual_info_classif
+from sklearn.preprocessing import StandardScaler
+import logging
 from .base import BaseModel
 from .lstm import LSTMModel
 from .xgboost_model import XGBoostModel
-from .prophet_model import ProphetModel
-from src.utils.metrics import calculate_trading_metrics
+from ..features.selector import FeatureSelector
 
-class EnsembleModel(BaseModel):
-    """Ensemble model combining multiple base models with improved robustness"""
+class EnhancedEnsemble(BaseModel):
+    """Enhanced ensemble model with adaptive features"""
 
-    def __init__(self, weights: Optional[Dict[str, float]] = None):
-        super().__init__("ensemble")
-        # Initialize models with optimized parameters
-        self.models = {
-            'lstm': LSTMModel(
-                sequence_length=30,
-                lstm_units=[32, 16],
-                dropout_rate=0.3,
-                recurrent_dropout=0.3
-            ),
-            'xgboost': XGBoostModel(params={
-                'objective': 'binary:logistic',
-                'eval_metric': 'logloss',
+    def __init__(self, config: Optional[Dict] = None):
+        super().__init__("enhanced_ensemble")
+
+        self.config = config or {
+            'lstm': {
+                'sequence_length': 30,
+                'lstm_units': [32, 16],
+                'dropout_rate': 0.3,
+                'recurrent_dropout': 0.3,
+                'learning_rate': 0.001
+            },
+            'xgboost': {
                 'max_depth': 4,
                 'learning_rate': 0.05,
                 'subsample': 0.8,
                 'colsample_bytree': 0.8,
                 'min_child_weight': 3,
-                'gamma': 0.1,
-                'reg_alpha': 0.1,
-                'reg_lambda': 1.0,
-                'scale_pos_weight': 1.0
-            }),
-            'prophet': ProphetModel(params={
-                'changepoint_prior_scale': 0.01,
-                'seasonality_prior_scale': 5,
-                'seasonality_mode': 'multiplicative',
-                'daily_seasonality': True,
-                'weekly_seasonality': True,
-                'yearly_seasonality': False
-            })
+                'gamma': 0.1
+            }
         }
 
-        # Initial model weights
-        self.weights = weights or {
-            'lstm': 0.3,
-            'xgboost': 0.5,
-            'prophet': 0.2
+        # Initialize models
+        self.models = {
+            'lstm': LSTMModel(**self.config['lstm']),
+            'xgboost': XGBoostModel(self.config['xgboost'])
         }
 
-        # Additional attributes for feature selection and model performance
-        self.feature_importance: Dict[str, float] = {}
-        self.prediction_threshold = 0.55
-        self.cv_scores: Dict[str, List[float]] = {}
-        self.selected_features: List[str] = []
+        # Initialize components
+        self.feature_selector = FeatureSelector()
+        self.scaler = StandardScaler()
 
-        # Configure logger
-        self.logger = logging.getLogger(__name__)
+        # Model weights and performance tracking
+        self.weights = {'lstm': 0.4, 'xgboost': 0.6}
+        self.model_performance = {}
+        self.validation_metrics = {}
 
-    def _select_features(self, X: pd.DataFrame, y: pd.Series) -> List[str]:
-        """Select important features using mutual information"""
+    def _prepare_data(self, X: pd.DataFrame, y: pd.Series) -> Tuple[pd.DataFrame, Dict[str, float]]:
+        """Prepare and select features"""
         try:
-            selector = SelectKBest(score_func=mutual_info_classif, k='all')
-            selector.fit(X, y)
+            # Select features
+            X_selected, feature_importance = self.feature_selector.select_features(X, y)
 
-            # Calculate feature scores
-            feature_scores = dict(zip(X.columns, selector.scores_))
-            self.feature_importance = feature_scores
+            # Scale features
+            X_scaled = self.scaler.fit_transform(X_selected)
+            X_scaled = pd.DataFrame(X_scaled, columns=X_selected.columns, index=X_selected.index)
 
-            # Select features above mean importance
-            mean_score = np.mean(list(feature_scores.values()))
-            selected_features = [col for col, score in feature_scores.items()
-                                 if score > mean_score]
-
-            self.logger.info(f"Selected {len(selected_features)} features out of {len(X.columns)}")
-            return selected_features
+            return X_scaled, feature_importance
 
         except Exception as e:
-            self.logger.error(f"Error in feature selection: {e}")
-            return list(X.columns)
+            self.logger.error(f"Error preparing data: {e}")
+            return X, {}
 
-    def _perform_cross_validation(
+    def _validate_model(
             self,
+            model_name: str,
+            model: BaseModel,
             X: pd.DataFrame,
             y: pd.Series,
             n_splits: int = 5
-    ) -> Dict[str, List[float]]:
-        """Perform time-series cross-validation"""
+    ) -> Dict[str, float]:
+        """Perform time series cross-validation"""
         try:
             tscv = TimeSeriesSplit(n_splits=n_splits)
-            cv_scores = {model_name: [] for model_name in self.models.keys()}
-
-            for fold, (train_idx, val_idx) in enumerate(tscv.split(X)):
-                self.logger.info(f"Training fold {fold + 1}/{n_splits}")
-
-                X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
-                y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
-
-                # Get validation set close prices
-                val_close = X_val['close'] if 'close' in X_val else None
-
-                for model_name, model in self.models.items():
-                    try:
-                        # Train model on fold
-                        model.train(X_train, y_train)
-                        val_pred = model.predict(X_val)
-
-                        # Calculate validation metrics
-                        if val_close is not None:
-                            val_metrics = calculate_trading_metrics(
-                                y_val.values,
-                                val_pred,
-                                val_close.values
-                            )
-                            score = val_metrics.get('sharpe_ratio', 0)
-                        else:
-                            # Fallback to accuracy if no price data
-                            from sklearn.metrics import accuracy_score
-                            score = accuracy_score(y_val, val_pred)
-
-                        cv_scores[model_name].append(score)
-                    except Exception as e:
-                        self.logger.error(f"Error in fold {fold} for model {model_name}: {e}")
-                        cv_scores[model_name].append(0)
-
-            return cv_scores
-
-        except Exception as e:
-            self.logger.error(f"Error in cross-validation: {e}")
-            return {model_name: [0.0] for model_name in self.models.keys()}
-
-    def _adjust_weights(self, cv_scores: Dict[str, List[float]]) -> None:
-        """Adjust model weights based on cross-validation performance"""
-        try:
-            # Calculate mean scores for each model
-            mean_scores = {
-                name: np.mean(scores) if scores else 0
-                for name, scores in cv_scores.items()
+            metrics = {
+                'accuracy': [],
+                'precision': [],
+                'recall': [],
+                'f1': [],
+                'sharpe': [],
+                'sortino': [],
+                'max_drawdown': []
             }
 
-            # Convert negative scores to zero
-            mean_scores = {name: max(0, score) for name, score in mean_scores.items()}
+            for train_idx, val_idx in tscv.split(X):
+                # Split data
+                X_train = X.iloc[train_idx]
+                y_train = y.iloc[train_idx]
+                X_val = X.iloc[val_idx]
+                y_val = y.iloc[val_idx]
 
-            # Calculate total score
-            total_score = sum(mean_scores.values())
+                # Train model
+                model.train(X_train, y_train)
 
+                # Get predictions
+                val_pred = model.predict(X_val)
+
+                # Calculate metrics
+                metrics['accuracy'].append(self._calculate_accuracy(y_val, val_pred))
+                metrics['precision'].append(self._calculate_precision(y_val, val_pred))
+                metrics['recall'].append(self._calculate_recall(y_val, val_pred))
+                metrics['f1'].append(self._calculate_f1(y_val, val_pred))
+                metrics['sharpe'].append(self._calculate_sharpe(val_pred, X_val['returns']))
+                metrics['sortino'].append(self._calculate_sortino(val_pred, X_val['returns']))
+                metrics['max_drawdown'].append(self._calculate_max_drawdown(val_pred, X_val['returns']))
+
+            # Average metrics
+            return {k: np.mean(v) for k, v in metrics.items()}
+
+        except Exception as e:
+            self.logger.error(f"Error validating {model_name}: {e}")
+            return {}
+
+    def _adjust_weights(self, performance: Dict[str, Dict[str, float]]) -> None:
+        """Adjust model weights based on performance"""
+        try:
+            scores = {}
+            for model_name, metrics in performance.items():
+                # Calculate composite score
+                score = (
+                        metrics.get('accuracy', 0) * 0.3 +
+                        metrics.get('sharpe', 0) * 0.3 +
+                        metrics.get('f1', 0) * 0.2 +
+                        (1 - metrics.get('max_drawdown', 0)) * 0.2
+                )
+                scores[model_name] = max(0, score)
+
+            # Normalize weights
+            total_score = sum(scores.values())
             if total_score > 0:
-                # Update weights based on relative performance
                 self.weights = {
-                    name: score / total_score
-                    for name, score in mean_scores.items()
+                    name: score/total_score
+                    for name, score in scores.items()
                 }
-            else:
-                # Fallback to default weights if all scores are negative
-                self.logger.warning("All models performed poorly, using default weights")
-
-            self.logger.info(f"Adjusted model weights: {self.weights}")
 
         except Exception as e:
             self.logger.error(f"Error adjusting weights: {e}")
 
     def train(self, X: pd.DataFrame, y: pd.Series) -> None:
-        """Train ensemble with feature selection and cross-validation"""
+        """Train ensemble with validation"""
         try:
             self.logger.info("Starting ensemble training...")
 
-            # Select features
-            self.selected_features = self._select_features(X, y)
-            X_selected = X[self.selected_features]
+            # Prepare data
+            X_prepared, feature_importance = self._prepare_data(X, y)
 
-            # Perform cross-validation
-            self.cv_scores = self._perform_cross_validation(X_selected, y)
-
-            # Adjust model weights
-            self._adjust_weights(self.cv_scores)
-
-            # Final training on full dataset
+            # Validate and train models
+            performance = {}
             for name, model in self.models.items():
-                self.logger.info(f"Final training of {name} model...")
-                model.train(X_selected, y)
+                self.logger.info(f"Training {name}...")
+
+                # Validate model
+                metrics = self._validate_model(name, model, X_prepared, y)
+                performance[name] = metrics
+
+                # Train final model
+                model.train(X_prepared, y)
+
+            # Adjust weights
+            self._adjust_weights(performance)
+
+            # Store metadata
+            self.model_performance = performance
+            self.feature_importance = feature_importance
 
             self.logger.info("Ensemble training completed")
 
@@ -191,11 +292,12 @@ class EnsembleModel(BaseModel):
             raise
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
-        """Make predictions with confidence threshold"""
+        """Make predictions with confidence scores"""
         try:
-            # Use selected features
-            if self.selected_features:
-                X = X[self.selected_features]
+            # Prepare features
+            X_prepared = self.feature_selector.transform(X)
+            X_scaled = self.scaler.transform(X_prepared)
+            X_scaled = pd.DataFrame(X_scaled, columns=X_prepared.columns, index=X_prepared.index)
 
             predictions = {}
             working_models = 0
@@ -203,7 +305,7 @@ class EnsembleModel(BaseModel):
             # Get predictions from each model
             for name, model in self.models.items():
                 try:
-                    pred = model.predict(X)
+                    pred = model.predict(X_scaled)
                     if len(pred) == len(X):
                         predictions[name] = pred
                         working_models += 1
@@ -211,7 +313,6 @@ class EnsembleModel(BaseModel):
                     self.logger.warning(f"Model {name} failed to predict: {e}")
 
             if working_models == 0:
-                self.logger.error("All models failed to predict")
                 return np.zeros(len(X))
 
             # Calculate weighted predictions
@@ -219,57 +320,23 @@ class EnsembleModel(BaseModel):
             for name, pred in predictions.items():
                 weighted_pred += pred * self.weights[name]
 
-            # Apply confidence threshold
-            return (weighted_pred > self.prediction_threshold).astype(int)
+            return weighted_pred
 
         except Exception as e:
-            self.logger.error(f"Error in ensemble prediction: {e}")
+            self.logger.error(f"Error in prediction: {e}")
             return np.zeros(len(X))
 
-    def save(self, path: str) -> bool:
-        """Save all models and ensemble parameters"""
+    def get_feature_importance(self) -> Dict[str, float]:
+        """Get combined feature importance"""
         try:
-            # Save each model
+            importance = {}
             for name, model in self.models.items():
-                model_path = f"{path}_{name}"
-                if not model.save(model_path):
-                    self.logger.error(f"Failed to save {name} model")
-                    return False
+                model_importance = model.get_feature_importance()
+                for feature, score in model_importance.items():
+                    importance[feature] = importance.get(feature, 0) + score * self.weights[name]
 
-            # Save ensemble parameters
-            params = {
-                'weights': self.weights,
-                'feature_importance': self.feature_importance,
-                'prediction_threshold': self.prediction_threshold,
-                'selected_features': self.selected_features
-            }
-
-            np.save(f"{path}_params.npy", params)
-            return True
+            return importance
 
         except Exception as e:
-            self.logger.error(f"Error saving ensemble: {e}")
-            return False
-
-    def load(self, path: str) -> bool:
-        """Load all models and ensemble parameters"""
-        try:
-            # Load each model
-            for name, model in self.models.items():
-                model_path = f"{path}_{name}"
-                if not model.load(model_path):
-                    self.logger.error(f"Failed to load {name} model")
-                    return False
-
-            # Load ensemble parameters
-            params = np.load(f"{path}_params.npy", allow_pickle=True).item()
-            self.weights = params['weights']
-            self.feature_importance = params['feature_importance']
-            self.prediction_threshold = params['prediction_threshold']
-            self.selected_features = params['selected_features']
-
-            return True
-
-        except Exception as e:
-            self.logger.error(f"Error loading ensemble: {e}")
-            return False
+            self.logger.error(f"Error getting feature importance: {e}")
+            return {}

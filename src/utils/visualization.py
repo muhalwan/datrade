@@ -1,515 +1,443 @@
-import logging
-
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import plotly.express as px
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from datetime import datetime
-import plotly.express as px
+import logging
 
 class TradingVisualizer:
-    """Visualization tools for trading analysis"""
+    """Advanced trading visualization system"""
 
-    @staticmethod
-    def plot_price_with_signals(
-            price_data: pd.DataFrame,
-            predictions: np.ndarray,
-            features: Optional[pd.DataFrame] = None,
-            window_size: int = 100
-    ) -> go.Figure:
-        """Plot price chart with trading signals and indicators"""
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.default_height = 800
+        self.color_scheme = {
+            'primary': '#1f77b4',
+            'secondary': '#ff7f0e',
+            'success': '#2ca02c',
+            'danger': '#d62728',
+            'neutral': '#7f7f7f'
+        }
 
-        # Create subplots
-        fig = make_subplots(
-            rows=3, cols=1,
-            shared_xaxes=True,
-            vertical_spacing=0.05,
-            row_heights=[0.5, 0.25, 0.25]
-        )
-
-        # Price and signals
-        fig.add_trace(
-            go.Candlestick(
-                x=price_data.index,
-                open=price_data['open'],
-                high=price_data['high'],
-                low=price_data['low'],
-                close=price_data['close'],
-                name='Price'
-            ),
-            row=1, col=1
-        )
-
-        # Add trading signals
-        signal_dates = price_data.index[predictions == 1]
-        if len(signal_dates) > 0:
-            fig.add_trace(
-                go.Scatter(
-                    x=signal_dates,
-                    y=price_data.loc[signal_dates, 'high'],
-                    mode='markers',
-                    marker=dict(
-                        symbol='triangle-down',
-                        size=10,
-                        color='green'
-                    ),
-                    name='Buy Signal'
-                ),
-                row=1, col=1
-            )
-
-        # Add volume
-        fig.add_trace(
-            go.Bar(
-                x=price_data.index,
-                y=price_data['volume'],
-                name='Volume'
-            ),
-            row=2, col=1
-        )
-
-        # Add indicators if available
-        if features is not None:
-            if 'rsi' in features.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=features.index,
-                        y=features['rsi'],
-                        name='RSI'
-                    ),
-                    row=3, col=1
-                )
-
-            if 'macd' in features.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=features.index,
-                        y=features['macd'],
-                        name='MACD'
-                    ),
-                    row=3, col=1
-                )
-
-        # Update layout
-        fig.update_layout(
-            title='Trading Signals and Indicators',
-            xaxis_rangeslider_visible=False,
-            height=800
-        )
-
-        return fig
-
-    @staticmethod
     def plot_model_performance(
+            self,
             y_true: np.ndarray,
             y_pred: np.ndarray,
-            prices: pd.Series,
+            prices: np.ndarray,
             features: pd.DataFrame
     ) -> Dict[str, go.Figure]:
         """Create comprehensive performance visualization"""
-        figures = {}
-
         try:
-            # Convert to numpy arrays to avoid Series ambiguity
-            if isinstance(prices, pd.Series):
-                prices = prices.values
+            figures = {}
 
             # Ensure all inputs are numpy arrays
+            prices = np.asarray(prices)
             y_true = np.asarray(y_true)
             y_pred = np.asarray(y_pred)
 
-            # Calculate returns properly
+            # Calculate returns
             returns = np.diff(prices) / prices[:-1]
-
-            # Calculate strategy returns using numpy
             strategy_returns = returns * y_pred[:-1]  # Align lengths
 
-            # Create equity curves - Use features.index[1:] to match returns length
-            index = features.index[1:len(returns)+1]  # Align index with returns
+            # 1. Equity Curve
+            figures['equity'] = self._plot_equity_curve(returns, strategy_returns, features.index[1:])
+
+            # 2. Feature Importance
+            figures['features'] = self._plot_feature_importance(features, returns)
+
+            # 3. Rolling Metrics
+            figures['metrics'] = self._plot_rolling_metrics(strategy_returns, features.index[1:])
+
+            # 4. Trade Analysis
+            figures['trades'] = self._plot_trade_analysis(
+                prices, returns, strategy_returns, y_pred, features.index
+            )
+
+            # 5. Risk Analysis
+            figures['risk'] = self._plot_risk_analysis(returns, strategy_returns, features.index[1:])
+
+            return figures
+
+        except Exception as e:
+            self.logger.error(f"Error in plot_model_performance: {e}")
+            return {'error': self._create_error_figure(str(e))}
+
+    def _plot_equity_curve(
+            self,
+            returns: np.ndarray,
+            strategy_returns: np.ndarray,
+            index: pd.DatetimeIndex
+    ) -> go.Figure:
+        """Plot cumulative returns comparison"""
+        try:
             equity_curve = pd.DataFrame({
                 'Buy & Hold': (1 + returns).cumprod(),
                 'Strategy': (1 + strategy_returns).cumprod()
             }, index=index)
 
-            figures['equity'] = px.line(
-                equity_curve,
+            fig = go.Figure()
+            for col in equity_curve.columns:
+                fig.add_trace(go.Scatter(
+                    x=equity_curve.index,
+                    y=equity_curve[col],
+                    name=col,
+                    mode='lines'
+                ))
+
+            fig.update_layout(
                 title='Strategy Performance',
-                labels={'value': 'Cumulative Return', 'variable': 'Strategy'}
+                xaxis_title='Date',
+                yaxis_title='Cumulative Return',
+                height=self.default_height,
+                hovermode='x unified',
+                showlegend=True
             )
 
-            # Feature importance - align features with returns
-            feature_importance = {}
-            features_aligned = features.iloc[1:len(returns)+1]  # Skip first row and align with returns
-            for col in features_aligned:
-                # Check dtype of individual series/column
-                if pd.api.types.is_numeric_dtype(features_aligned[col]):
-                    # Ensure same length for correlation
-                    correlation = np.corrcoef(features_aligned[col].values, returns)[0, 1]
-                    feature_importance[col] = abs(correlation) if not np.isnan(correlation) else 0
-
-            feature_importance = pd.Series(feature_importance).sort_values(ascending=True)
-
-            figures['features'] = px.bar(
-                x=feature_importance.values,
-                y=feature_importance.index,
-                orientation='h',
-                title='Feature Importance (Correlation with Returns)'
-            )
-
-            # Calculate rolling metrics using aligned data
-            window = min(len(returns) // 10, 50)
-            rolling_metrics = pd.DataFrame(index=index)
-
-            # Win rate calculation
-            rolling_metrics['Win Rate'] = pd.Series(strategy_returns > 0, index=index).rolling(window).mean()
-
-            # Sharpe ratio calculation (safe division)
-            def rolling_sharpe(x):
-                if len(x) < 2:
-                    return 0
-                std = np.std(x)
-                if std == 0:
-                    return 0
-                return np.sqrt(252) * np.mean(x) / std
-
-            rolling_metrics['Sharpe'] = pd.Series(strategy_returns, index=index).rolling(window).apply(rolling_sharpe)
-
-            figures['metrics'] = px.line(
-                rolling_metrics,
-                title=f'Rolling Metrics ({window} periods)',
-                labels={'value': 'Metric Value', 'variable': 'Metric'}
-            )
-
-            # Trade distribution (non-zero returns only)
-            trade_returns = strategy_returns[strategy_returns != 0]
-            if len(trade_returns) > 0:
-                figures['distribution'] = px.histogram(
-                    trade_returns,
-                    title='Trade Return Distribution',
-                    labels={'value': 'Return', 'count': 'Frequency'},
-                    nbins=50
-                )
-
-            # Drawdown calculation using aligned data
-            cum_returns = (1 + strategy_returns).cumprod()
-            rolling_max = np.maximum.accumulate(cum_returns)
-            drawdown = (cum_returns - rolling_max) / rolling_max
-
-            figures['drawdown'] = px.line(
-                pd.Series(drawdown, index=index),
-                title='Strategy Drawdown',
-                labels={'value': 'Drawdown', 'index': 'Date'}
-            )
-
-            return figures
+            return fig
 
         except Exception as e:
-            logging.error(f"Error in plot_model_performance: {e}")
-            return {'error': go.Figure().add_annotation(
-                text=f"Error generating plots: {str(e)}",
-                showarrow=False,
-                xref="paper",
-                yref="paper"
-            )}
+            self.logger.error(f"Error plotting equity curve: {e}")
+            return self._create_error_figure("Error plotting equity curve")
 
-    @staticmethod
-    def plot_feature_analysis(features: pd.DataFrame, returns: pd.Series) -> Dict[str, go.Figure]:
-        """Create feature analysis visualizations"""
-        figures = {}
-
-        # 1. Feature correlations
-        corr_matrix = features.corr()
-        figures['correlations'] = px.imshow(
-            corr_matrix,
-            title='Feature Correlations',
-            color_continuous_scale='RdBu'
-        )
-
-        # 2. Feature distributions
-        for col in features.columns[:5]:  # Limit to first 5 features
-            figures[f'dist_{col}'] = px.histogram(
-                features[col].dropna(),
-                title=f'{col} Distribution',
-                nbins=50
-            )
-
-        # 3. Feature vs Returns scatter plots
-        for col in features.columns[:5]:
-            figures[f'scatter_{col}'] = px.scatter(
-                x=features[col],
-                y=returns,
-                title=f'{col} vs Returns',
-                trendline='ols'
-            )
-
-        return figures
-
-    @staticmethod
-    def plot_orderbook_heatmap(
-            orderbook_data: pd.DataFrame,
-            price_data: pd.DataFrame,
-            timestamp: datetime
-    ) -> go.Figure:
-        """Create orderbook heatmap visualization"""
-        # Filter data for the specific timestamp
-        current_price = price_data.loc[price_data.index <= timestamp, 'close'].iloc[-1]
-        window_data = orderbook_data[
-            (orderbook_data['timestamp'] >= timestamp - pd.Timedelta(minutes=5)) &
-            (orderbook_data['timestamp'] <= timestamp)
-            ]
-
-        # Separate bids and asks
-        bids = window_data[window_data['side'] == 'bid']
-        asks = window_data[window_data['side'] == 'ask']
-
-        fig = go.Figure()
-
-        # Add bid volumes
-        fig.add_trace(go.Bar(
-            x=bids['price'],
-            y=bids['quantity'],
-            name='Bids',
-            marker_color='green',
-            opacity=0.5
-        ))
-
-        # Add ask volumes
-        fig.add_trace(go.Bar(
-            x=asks['price'],
-            y=asks['quantity'],
-            name='Asks',
-            marker_color='red',
-            opacity=0.5
-        ))
-
-        # Add current price line
-        fig.add_vline(
-            x=current_price,
-            line_dash="dash",
-            line_color="blue",
-            annotation_text="Current Price"
-        )
-
-        # Update layout for orderbook heatmap
-        fig.update_layout(
-            title=f'Order Book Depth at {timestamp}',
-            xaxis_title='Price',
-            yaxis_title='Quantity',
-            barmode='overlay',
-            showlegend=True,
-            height=600,
-            bargap=0
-        )
-
-        return fig
-
-    @staticmethod
-    def create_dashboard(
-            price_data: pd.DataFrame,
-            predictions: np.ndarray,
+    def _plot_feature_importance(
+            self,
             features: pd.DataFrame,
-            metrics: Dict[str, float],
-            orderbook_data: Optional[pd.DataFrame] = None
-    ) -> Dict[str, go.Figure]:
-        """Create comprehensive trading dashboard"""
-        viz = TradingVisualizer()
-        dashboard = {}
+            returns: np.ndarray
+    ) -> go.Figure:
+        """Plot feature importance analysis"""
+        try:
+            # Calculate correlation-based importance
+            importance = {}
+            for col in features.columns:
+                if pd.api.types.is_numeric_dtype(features[col]):
+                    correlation = np.corrcoef(features[col].values[:-1], returns)[0, 1]
+                    importance[col] = abs(correlation) if not np.isnan(correlation) else 0
 
-        # 1. Main trading chart with signals
-        dashboard['main_chart'] = viz.plot_price_with_signals(
-            price_data,
-            predictions,
-            features
-        )
+            # Sort features by importance
+            importance = pd.Series(importance).sort_values(ascending=True)
 
-        # 2. Performance metrics
-        returns = pd.Series(np.diff(price_data['close']) / price_data['close'][:-1])
-        strategy_returns = returns * predictions[:-1]
-
-        dashboard['performance'] = viz.plot_model_performance(
-            predictions[:-1],
-            predictions[:-1],
-            price_data['close'],
-            features
-        )
-
-        # 3. Feature analysis
-        dashboard['features'] = viz.plot_feature_analysis(
-            features,
-            returns
-        )
-
-        # 4. Metrics summary
-        metrics_fig = go.Figure(data=[
-            go.Table(
-                header=dict(
-                    values=['Metric', 'Value'],
-                    fill_color='paleturquoise',
-                    align='left'
-                ),
-                cells=dict(
-                    values=[
-                        list(metrics.keys()),
-                        [f"{v:.4f}" for v in metrics.values()]
-                    ],
-                    fill_color='lavender',
-                    align='left'
-                )
-            )
-        ])
-
-        metrics_fig.update_layout(
-            title='Performance Metrics',
-            height=400
-        )
-
-        dashboard['metrics'] = metrics_fig
-
-        # 5. Order book analysis (if available)
-        if orderbook_data is not None:
-            latest_timestamp = price_data.index[-1]
-            dashboard['orderbook'] = viz.plot_orderbook_heatmap(
-                orderbook_data,
-                price_data,
-                latest_timestamp
-            )
-
-        return dashboard
-
-    @staticmethod
-    def plot_backtest_results(
-            portfolio_value: pd.Series,
-            trades: List[Dict],
-            benchmark: Optional[pd.Series] = None
-    ) -> Dict[str, go.Figure]:
-        """Create backtest analysis visualizations"""
-        figures = {}
-
-        # 1. Portfolio value over time
-        fig = go.Figure()
-
-        fig.add_trace(go.Scatter(
-            x=portfolio_value.index,
-            y=portfolio_value.values,
-            name='Strategy',
-            line=dict(color='blue')
-        ))
-
-        if benchmark is not None:
-            fig.add_trace(go.Scatter(
-                x=benchmark.index,
-                y=benchmark.values,
-                name='Benchmark',
-                line=dict(color='gray', dash='dash')
+            # Create bar plot
+            fig = go.Figure()
+            fig.add_trace(go.Bar(
+                x=importance.values,
+                y=importance.index,
+                orientation='h',
+                marker_color=self.color_scheme['primary']
             ))
 
-        fig.update_layout(
-            title='Portfolio Value Over Time',
-            xaxis_title='Date',
-            yaxis_title='Value',
-            height=600
-        )
-
-        figures['portfolio'] = fig
-
-        # 2. Trade analysis
-        if trades:
-            trade_data = pd.DataFrame(trades)
-
-            # Trade sizes
-            figures['trade_sizes'] = px.histogram(
-                trade_data['size'],
-                title='Trade Size Distribution',
-                labels={'value': 'Trade Size', 'count': 'Frequency'}
+            fig.update_layout(
+                title='Feature Importance',
+                xaxis_title='Absolute Correlation with Returns',
+                yaxis_title='Feature',
+                height=max(400, len(importance) * 20),
+                showlegend=False
             )
 
-            # Trade returns
-            if 'return' in trade_data.columns:
-                figures['trade_returns'] = px.histogram(
-                    trade_data['return'],
-                    title='Trade Return Distribution',
-                    labels={'value': 'Return (%)', 'count': 'Frequency'}
+            return fig
+
+        except Exception as e:
+            self.logger.error(f"Error plotting feature importance: {e}")
+            return self._create_error_figure("Error plotting feature importance")
+
+    def _plot_rolling_metrics(
+            self,
+            strategy_returns: np.ndarray,
+            index: pd.DatetimeIndex,
+            window: int = 50
+    ) -> go.Figure:
+        """Plot rolling performance metrics"""
+        try:
+            metrics_df = pd.DataFrame(index=index)
+
+            # Calculate rolling metrics
+            metrics_df['Win Rate'] = pd.Series(strategy_returns > 0).rolling(window).mean()
+            metrics_df['Volatility'] = pd.Series(strategy_returns).rolling(window).std() * np.sqrt(252)
+            metrics_df['Sharpe'] = (pd.Series(strategy_returns).rolling(window).mean() * 252) / (
+                    pd.Series(strategy_returns).rolling(window).std() * np.sqrt(252)
+            )
+
+            # Create subplot figure
+            fig = make_subplots(
+                rows=3, cols=1,
+                shared_xaxes=True,
+                subplot_titles=('Win Rate', 'Volatility', 'Sharpe Ratio')
+            )
+
+            # Add traces
+            for i, col in enumerate(metrics_df.columns, 1):
+                fig.add_trace(
+                    go.Scatter(
+                        x=metrics_df.index,
+                        y=metrics_df[col],
+                        name=col,
+                        line=dict(color=list(self.color_scheme.values())[i-1])
+                    ),
+                    row=i, col=1
                 )
 
-            # Trade durations
-            if 'duration' in trade_data.columns:
-                figures['trade_durations'] = px.histogram(
-                    trade_data['duration'],
-                    title='Trade Duration Distribution',
-                    labels={'value': 'Duration (hours)', 'count': 'Frequency'}
+            fig.update_layout(
+                height=900,
+                showlegend=True,
+                hovermode='x unified'
+            )
+
+            return fig
+
+        except Exception as e:
+            self.logger.error(f"Error plotting rolling metrics: {e}")
+            return self._create_error_figure("Error plotting rolling metrics")
+
+    def _plot_trade_analysis(
+            self,
+            prices: np.ndarray,
+            returns: np.ndarray,
+            strategy_returns: np.ndarray,
+            predictions: np.ndarray,
+            index: pd.DatetimeIndex
+    ) -> go.Figure:
+        """Plot trade analysis dashboard"""
+        try:
+            fig = make_subplots(
+                rows=2, cols=2,
+                subplot_titles=(
+                    'Price and Signals',
+                    'Return Distribution',
+                    'Trade Duration',
+                    'Win/Loss Analysis'
                 )
+            )
 
-        return figures
+            # 1. Price and Signals
+            fig.add_trace(
+                go.Scatter(
+                    x=index,
+                    y=prices,
+                    name='Price',
+                    line=dict(color=self.color_scheme['primary'])
+                ),
+                row=1, col=1
+            )
 
-    @staticmethod
-    def create_pdf_report(
+            # Add buy/sell signals
+            signals = np.diff(predictions) != 0
+            signal_dates = index[1:][signals]
+            signal_prices = prices[1:][signals]
+
+            fig.add_trace(
+                go.Scatter(
+                    x=signal_dates,
+                    y=signal_prices,
+                    mode='markers',
+                    name='Trades',
+                    marker=dict(
+                        symbol='circle',
+                        size=8,
+                        color=self.color_scheme['secondary']
+                    )
+                ),
+                row=1, col=1
+            )
+
+            # 2. Return Distribution
+            fig.add_trace(
+                go.Histogram(
+                    x=strategy_returns[strategy_returns != 0],
+                    name='Strategy Returns',
+                    nbinsx=50,
+                    marker_color=self.color_scheme['primary']
+                ),
+                row=1, col=2
+            )
+
+            # 3. Trade Duration Analysis
+            trade_durations = self._calculate_trade_durations(predictions)
+            fig.add_trace(
+                go.Histogram(
+                    x=trade_durations,
+                    name='Trade Duration',
+                    nbinsx=30,
+                    marker_color=self.color_scheme['secondary']
+                ),
+                row=2, col=1
+            )
+
+            # 4. Win/Loss Analysis
+            win_returns = strategy_returns[strategy_returns > 0]
+            loss_returns = strategy_returns[strategy_returns < 0]
+
+            fig.add_trace(
+                go.Box(
+                    y=win_returns,
+                    name='Winning Trades',
+                    marker_color=self.color_scheme['success']
+                ),
+                row=2, col=2
+            )
+
+            fig.add_trace(
+                go.Box(
+                    y=loss_returns,
+                    name='Losing Trades',
+                    marker_color=self.color_scheme['danger']
+                ),
+                row=2, col=2
+            )
+
+            fig.update_layout(
+                height=1000,
+                showlegend=True,
+                hovermode='x unified'
+            )
+
+            return fig
+
+        except Exception as e:
+            self.logger.error(f"Error plotting trade analysis: {e}")
+            return self._create_error_figure("Error plotting trade analysis")
+
+    def _plot_risk_analysis(
+            self,
+            returns: np.ndarray,
+            strategy_returns: np.ndarray,
+            index: pd.DatetimeIndex
+    ) -> go.Figure:
+        """Plot risk analysis dashboard"""
+        try:
+            fig = make_subplots(
+                rows=2, cols=2,
+                subplot_titles=(
+                    'Drawdown Analysis',
+                    'Rolling Volatility',
+                    'Value at Risk',
+                    'Risk Contribution'
+                )
+            )
+
+            # 1. Drawdown Analysis
+            drawdown = self._calculate_drawdown(strategy_returns)
+            fig.add_trace(
+                go.Scatter(
+                    x=index,
+                    y=drawdown,
+                    name='Strategy Drawdown',
+                    fill='tozeroy',
+                    line=dict(color=self.color_scheme['danger'])
+                ),
+                row=1, col=1
+            )
+
+            # 2. Rolling Volatility
+            vol_window = min(60, len(returns) // 4)
+            rolling_vol = pd.Series(strategy_returns).rolling(vol_window).std() * np.sqrt(252)
+            fig.add_trace(
+                go.Scatter(
+                    x=index,
+                    y=rolling_vol,
+                    name='Rolling Volatility',
+                    line=dict(color=self.color_scheme['secondary'])
+                ),
+                row=1, col=2
+            )
+
+            # 3. Value at Risk
+            var_levels = [0.99, 0.95, 0.90]
+            vars = [np.percentile(strategy_returns, (1-p)*100) for p in var_levels]
+            fig.add_trace(
+                go.Bar(
+                    x=[f"{p*100}% VaR" for p in var_levels],
+                    y=[-v for v in vars],
+                    name='Value at Risk',
+                    marker_color=self.color_scheme['primary']
+                ),
+                row=2, col=1
+            )
+
+            # 4. Risk Contribution
+            risk_metrics = {
+                'Market': np.std(returns),
+                'Strategy': np.std(strategy_returns),
+                'Active': np.std(strategy_returns - returns)
+            }
+            fig.add_trace(
+                go.Pie(
+                    labels=list(risk_metrics.keys()),
+                    values=list(risk_metrics.values()),
+                    name='Risk Contribution'
+                ),
+                row=2, col=2
+            )
+
+            fig.update_layout(
+                height=800,
+                showlegend=True,
+                hovermode='x unified'
+            )
+
+            return fig
+
+        except Exception as e:
+            self.logger.error(f"Error plotting risk analysis: {e}")
+            return self._create_error_figure("Error plotting risk analysis")
+
+    def _calculate_trade_durations(self, predictions: np.ndarray) -> np.ndarray:
+        """Calculate durations of trades"""
+        try:
+            trade_starts = np.where(np.diff(predictions) != 0)[0] + 1
+            trade_ends = np.append(trade_starts[1:], len(predictions))
+            return trade_ends - trade_starts
+        except Exception as e:
+            self.logger.error(f"Error calculating trade durations: {e}")
+            return np.array([])
+
+    def _calculate_drawdown(self, returns: np.ndarray) -> np.ndarray:
+        """Calculate drawdown series"""
+        try:
+            cum_returns = (1 + returns).cumprod()
+            running_max = np.maximum.accumulate(cum_returns)
+            return (cum_returns - running_max) / running_max
+        except Exception as e:
+            self.logger.error(f"Error calculating drawdown: {e}")
+            return np.zeros_like(returns)
+
+    def _create_error_figure(self, error_message: str) -> go.Figure:
+        """Create error figure with message"""
+        fig = go.Figure()
+        fig.add_annotation(
+            text=f"Error: {error_message}",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+            font=dict(size=14, color="red")
+        )
+        return fig
+
+    def save_html_report(
+            self,
             figures: Dict[str, go.Figure],
             metrics: Dict[str, float],
             output_path: str
     ) -> None:
-        """Generate PDF report with all visualizations and metrics"""
-        try:
-            from reportlab.lib import colors
-            from reportlab.lib.pagesizes import letter
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table
-            from reportlab.lib.styles import getSampleStyleSheet
-
-            doc = SimpleDocTemplate(output_path, pagesize=letter)
-            story = []
-            styles = getSampleStyleSheet()
-
-            # Add title
-            story.append(Paragraph("Trading Strategy Analysis Report", styles['Title']))
-            story.append(Spacer(1, 12))
-
-            # Add metrics table
-            metrics_data = [[k, f"{v:.4f}"] for k, v in metrics.items()]
-            metrics_table = Table([["Metric", "Value"]] + metrics_data)
-            metrics_table.setStyle([
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 14),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-                ('FONTSIZE', (0, 1), (-1, -1), 12),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black)
-            ])
-            story.append(metrics_table)
-            story.append(Spacer(1, 12))
-
-            # Add figures
-            for name, fig in figures.items():
-                # Save figure as temporary image
-                img_path = f"temp_{name}.png"
-                fig.write_image(img_path)
-
-                # Add to report
-                story.append(Paragraph(name.replace('_', ' ').title(), styles['Heading2']))
-                story.append(Image(img_path, width=500, height=300))
-                story.append(Spacer(1, 12))
-
-            # Generate PDF
-            doc.build(story)
-
-        except Exception as e:
-            print(f"Error generating PDF report: {e}")
-
-    @staticmethod
-    def save_interactive_html(
-            figures: Dict[str, go.Figure],
-            output_path: str
-    ) -> None:
-        """Save interactive HTML dashboard"""
+        """Save interactive HTML report"""
         try:
             with open(output_path, 'w') as f:
-                f.write("<html><head><title>Trading Analysis Dashboard</title></head><body>")
+                f.write("<html><head>")
+                f.write("<title>Trading Strategy Analysis</title>")
+                f.write("<style>")
+                f.write("body { font-family: Arial, sans-serif; margin: 20px; }")
+                f.write(".metric { display: inline-block; margin: 10px; padding: 10px; border: 1px solid #ddd; }")
+                f.write("</style>")
+                f.write("</head><body>")
 
+                # Add metrics summary
+                f.write("<h2>Performance Metrics</h2>")
+                for name, value in metrics.items():
+                    f.write(f'<div class="metric"><b>{name}:</b> {value:.4f}</div>')
+
+                # Add figures
                 for name, fig in figures.items():
                     f.write(f"<h2>{name.replace('_', ' ').title()}</h2>")
                     f.write(fig.to_html(full_html=False, include_plotlyjs='cdn'))
@@ -517,4 +445,4 @@ class TradingVisualizer:
                 f.write("</body></html>")
 
         except Exception as e:
-            print(f"Error saving interactive HTML: {e}")
+            self.logger.error(f"Error saving HTML report: {e}")
