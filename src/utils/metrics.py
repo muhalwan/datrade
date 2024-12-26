@@ -45,9 +45,9 @@ def calculate_trading_metrics(
         # ML metrics
         ml_metrics = {
             'accuracy': accuracy_score(y_true, (y_pred > 0.5).astype(int)),
-            'precision': precision_score(y_true, (y_pred > 0.5).astype(int)),
-            'recall': recall_score(y_true, (y_pred > 0.5).astype(int)),
-            'f1': f1_score(y_true, (y_pred > 0.5).astype(int)),
+            'precision': precision_score(y_true, (y_pred > 0.5).astype(int), zero_division=0),
+            'recall': recall_score(y_true, (y_pred > 0.5).astype(int), zero_division=0),
+            'f1': f1_score(y_true, (y_pred > 0.5).astype(int), zero_division=0),
             'roc_auc': roc_auc_score(y_true, y_pred)
         }
 

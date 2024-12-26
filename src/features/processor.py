@@ -275,7 +275,6 @@ class FeatureProcessor:
         self.logger.info(f"Final target shape: {target.shape}")
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        """Transform new data using fitted preprocessing"""
         try:
             # Select features if available
             if self.selected_features:
@@ -283,9 +282,11 @@ class FeatureProcessor:
 
             # Handle missing values
             X = X.replace([np.inf, -np.inf], np.nan)
-            X = X.fillna(method='ffill').fillna(method='bfill')
+            X = X.ffill().bfill()  # Replace fillna with ffill/bfill
 
             # Scale features
+            if not hasattr(self.scaler, 'mean_'):  # Check if scaler is fitted
+                self.scaler.fit(X)
             X_scaled = self.scaler.transform(X)
             return pd.DataFrame(X_scaled, columns=X.columns, index=X.index)
 
