@@ -25,7 +25,7 @@ class SentimentAnalyzer:
         self.sentiment_window = 20
         self.lookback_periods = 50
 
-    def analyze_market_sentiment(
+    def calculate_market_sentiment(
             self,
             price_data: pd.DataFrame,
             orderbook_data: Optional[pd.DataFrame] = None,
@@ -65,6 +65,7 @@ class SentimentAnalyzer:
 
         except Exception as e:
             self.logger.error(f"Error calculating market sentiment: {e}")
+            return pd.DataFrame()
 
     def _calculate_price_sentiment(self, price_data: pd.DataFrame, sentiment_df: pd.DataFrame) -> pd.DataFrame:
         """Calculate price-based sentiment indicators"""

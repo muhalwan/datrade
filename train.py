@@ -1,3 +1,6 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 import logging
 import pandas as pd
 import numpy as np
@@ -12,6 +15,9 @@ from src.models.ensemble import EnhancedEnsemble
 from src.utils.metrics import calculate_trading_metrics
 from src.utils.visualization import TradingVisualizer
 from src.config import settings
+from keras.callbacks import ModelCheckpoint
+
+checkpoint = ModelCheckpoint(filepath='best_model.weights.h5', save_weights_only=True)
 
 class ModelTrainer:
     """Comprehensive model training system"""
@@ -47,53 +53,46 @@ class ModelTrainer:
             db: MongoDBConnection,
             symbol: str,
             start_date: datetime,
-            end_date: datetime
+            end_date: datetime,
+            batch_size: timedelta = timedelta(days=7)
     ) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
-        """Load and prepare training data"""
+        """Load and prepare training data in batches"""
         try:
             self.logger.info(f"Loading data from {start_date} to {end_date}")
 
-            # Construct query
-            query = {
-                'symbol': symbol,
-                'trade_time': {
-                    '$gte': start_date,
-                    '$lt': end_date
-                }
-            }
-            self.logger.info(f"MongoDB query: {query}")
+            price_data_list = []
+            orderbook_data_list = []
 
-            # Load price data
-            price_data = pd.DataFrame(
-                list(db.get_collection('price_data')
-                     .find(query)
-                     .sort('trade_time', 1))
-            )
+            current_start = start_date
+            while current_start < end_date:
+                current_end = min(current_start + batch_size, end_date)
+                self.logger.info(f"Processing batch from {current_start} to {current_end}")
 
-            if price_data.empty:
+                # Load price data
+                price_batch = self._load_data_batch(db, 'price_data', symbol, current_start, current_end)
+                if price_batch is not None:
+                    price_data_list.append(price_batch)
+
+                # Load orderbook data
+                orderbook_batch = self._load_data_batch(db, 'order_book', symbol, current_start, current_end)
+                if orderbook_batch is not None:
+                    orderbook_data_list.append(orderbook_batch)
+
+                current_start = current_end
+
+            if not price_data_list:
                 self.logger.error("No price data found")
                 return None, None
 
-            self.logger.info(f"Loaded {len(price_data)} price records")
+            # Concatenate all batches
+            price_data = pd.concat(price_data_list)
+            orderbook_data = pd.concat(orderbook_data_list) if orderbook_data_list else pd.DataFrame()
+
+            self.logger.info(f"Total loaded price records: {len(price_data)}")
+            self.logger.info(f"Total loaded orderbook records: {len(orderbook_data)}")
 
             # Convert to OHLCV
             ohlcv_data = self._convert_to_ohlcv(price_data)
-
-            # Load orderbook data
-            orderbook_query = {
-                'symbol': symbol,
-                'timestamp': {
-                    '$gte': start_date,
-                    '$lt': end_date
-                }
-            }
-            orderbook_data = pd.DataFrame(
-                list(db.get_collection('order_book')
-                     .find(orderbook_query)
-                     .sort('timestamp', 1))
-            )
-
-            self.logger.info(f"Loaded {len(orderbook_data)} orderbook records")
 
             return ohlcv_data, orderbook_data
 
@@ -101,6 +100,41 @@ class ModelTrainer:
             self.logger.error(f"Error loading data: {e}")
             self.logger.exception("Detailed error:")
             return None, None
+
+    def _load_data_batch(
+            self,
+            db: MongoDBConnection,
+            collection_name: str,
+            symbol: str,
+            start_date: datetime,
+            end_date: datetime
+    ) -> Optional[pd.DataFrame]:
+        try:
+            query = {
+                'symbol': symbol,
+                'trade_time' if collection_name == 'price_data' else 'timestamp': {
+                    '$gte': start_date,
+                    '$lt': end_date
+                }
+            }
+            self.logger.info(f"MongoDB query for {collection_name}: {query}")
+
+            data = pd.DataFrame(
+                list(db.get_collection(collection_name)
+                     .find(query, allow_disk_use=True)  # Enable disk use for sorting
+                     .sort('trade_time' if collection_name == 'price_data' else 'timestamp', 1))
+            )
+
+            if data.empty:
+                self.logger.warning(f"No data found in {collection_name} for the given range")
+                return None
+
+            self.logger.info(f"Loaded {len(data)} records from {collection_name}")
+            return data
+
+        except Exception as e:
+            self.logger.error(f"Error loading batch from {collection_name}: {e}")
+            return None
 
     def _convert_to_ohlcv(self, trades_df: pd.DataFrame, timeframe: str = '5min') -> pd.DataFrame:
         """Convert trade data to OHLCV format"""
@@ -150,6 +184,12 @@ class ModelTrainer:
 
             self.logger.info("Processing features...")
 
+            # Log input data
+            self.logger.info(f"Price data shape: {price_data.shape}")
+            self.logger.info(f"Price data columns: {price_data.columns}")
+            self.logger.info(f"Orderbook data shape: {orderbook_data.shape}")
+            self.logger.info(f"Orderbook data columns: {orderbook_data.columns}")
+
             # Generate features
             features, target = self.feature_processor.prepare_features(
                 price_data=price_data,
@@ -159,6 +199,10 @@ class ModelTrainer:
 
             if features.empty or target.empty:
                 raise ValueError("Feature generation failed")
+
+            # Log features and target
+            self.logger.info(f"Features shape: {features.shape}")
+            self.logger.info(f"Target shape: {target.shape}")
 
             # Split data
             train_end = int(len(features) * 0.8)
@@ -209,7 +253,7 @@ class ModelTrainer:
 
             # Save model
             model_dir = Path("models/trained")
-            model_path = model_dir / f"{symbol}_model"
+            model_path = model_dir / f"{symbol}_model.weights.h5"  # Ensure filepath ends with .weights.h5
             model.save(str(model_path))
             self.logger.info(f"Model saved to {model_path}")
 

@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import ta
+import talib as ta
 import logging
 from typing import Optional, Dict, List
 from dataclasses import dataclass
@@ -11,7 +11,7 @@ class TechnicalPattern:
     confidence: float
     signal: int  # 1 for bullish, -1 for bearish, 0 for neutral
 
-class TechnicalAnalyzer:
+class TechnicalFeatureCalculator:
     """Advanced technical analysis system"""
 
     def __init__(self):
@@ -81,10 +81,10 @@ class TechnicalAnalyzer:
         """Add moving average indicators"""
         try:
             # Simple Moving Average
-            df[f'sma_{window}'] = ta.trend.sma_indicator(df['close'], window=window)
+            df[f'sma_{window}'] = ta.SMA(df['close'], timeperiod=window)
 
             # Exponential Moving Average
-            df[f'ema_{window}'] = ta.trend.ema_indicator(df['close'], window=window)
+            df[f'ema_{window}'] = ta.EMA(df['close'], timeperiod=window)
 
             # Moving Average Position
             df[f'ma_position_{window}'] = (df['close'] - df[f'sma_{window}']) / df[f'sma_{window}']
@@ -109,11 +109,11 @@ class TechnicalAnalyzer:
         """Add momentum indicators"""
         try:
             # RSI
-            df['rsi'] = ta.momentum.rsi(df['close'])
-            df['rsi_ma'] = ta.trend.sma_indicator(df['rsi'], window=14)
+            df['rsi'] = ta.RSI(df['close'])
+            df['rsi_ma'] = ta.SMA(df['rsi'], window=14)
 
             # MACD
-            macd = ta.trend.MACD(df['close'])
+            macd = ta.MACD(df['close'])
             df['macd'] = macd.macd()
             df['macd_signal'] = macd.macd_signal()
             df['macd_diff'] = macd.macd_diff()
@@ -123,16 +123,16 @@ class TechnicalAnalyzer:
             ).astype(int)
 
             # Stochastic
-            stoch = ta.momentum.StochasticOscillator(df['high'], df['low'], df['close'])
+            stoch = ta.STOCH(df['high'], df['low'], df['close'])
             df['stoch_k'] = stoch.stoch()
             df['stoch_d'] = stoch.stoch_signal()
 
             # Rate of Change
             for period in [9, 21]:
-                df[f'roc_{period}'] = ta.momentum.roc(df['close'], period)
+                df[f'roc_{period}'] = ta.ROC(df['close'], period)
 
             # Average Directional Index
-            adx = ta.trend.ADXIndicator(df['high'], df['low'], df['close'])
+            adx = ta.ADX(df['high'], df['low'], df['close'])
             df['adx'] = adx.adx()
             df['adx_pos'] = adx.adx_pos()
             df['adx_neg'] = adx.adx_neg()
@@ -146,7 +146,7 @@ class TechnicalAnalyzer:
         """Add volatility indicators"""
         try:
             # Bollinger Bands
-            bb = ta.volatility.BollingerBands(df['close'])
+            bb = ta.BBANDS(df['close'])
             df['bb_high'] = bb.bollinger_hband()
             df['bb_mid'] = bb.bollinger_mavg()
             df['bb_low'] = bb.bollinger_lband()
@@ -154,11 +154,11 @@ class TechnicalAnalyzer:
             df['bb_position'] = (df['close'] - df['bb_low']) / (df['bb_high'] - df['bb_low'])
 
             # Average True Range
-            df['atr'] = ta.volatility.average_true_range(df['high'], df['low'], df['close'])
+            df['atr'] = ta.ATR(df['high'], df['low'], df['close'])
             df['atr_percent'] = df['atr'] / df['close']
 
             # Keltner Channels
-            kc = ta.volatility.KeltnerChannel(df['high'], df['low'], df['close'])
+            kc = ta.KELTNER(df['high'], df['low'], df['close'])
             df['kc_high'] = kc.keltner_channel_hband()
             df['kc_mid'] = kc.keltner_channel_mband()
             df['kc_low'] = kc.keltner_channel_lband()
@@ -177,21 +177,21 @@ class TechnicalAnalyzer:
         """Add volume-based indicators"""
         try:
             # Volume trends
-            df['volume_sma'] = ta.trend.sma_indicator(df['volume'], window=20)
+            df['volume_sma'] = ta.SMA(df['volume'], window=20)
             df['volume_ratio'] = df['volume'] / df['volume_sma']
 
             # On-Balance Volume
-            df['obv'] = ta.volume.on_balance_volume(df['close'], df['volume'])
-            df['obv_sma'] = ta.trend.sma_indicator(df['obv'], window=20)
+            df['obv'] = ta.OBV(df['close'], df['volume'])
+            df['obv_sma'] = ta.SMA(df['obv'], window=20)
 
             # Volume Force Index
-            df['force_index'] = ta.volume.force_index(df['close'], df['volume'])
+            df['force_index'] = ta.FORCE(df['close'], df['volume'])
 
             # Money Flow Index
-            df['mfi'] = ta.volume.money_flow_index(df['high'], df['low'], df['close'], df['volume'])
+            df['mfi'] = ta.MFI(df['high'], df['low'], df['close'], df['volume'])
 
             # Ease of Movement
-            df['eom'] = ta.volume.ease_of_movement(df['high'], df['low'], df['volume'])
+            df['eom'] = ta.EOM(df['high'], df['low'], df['volume'])
 
             # Volume-weighted Average Price
             df['vwap'] = (df['volume'] * (df['high'] + df['low'] + df['close']) / 3).cumsum() / df['volume'].cumsum()
@@ -205,19 +205,19 @@ class TechnicalAnalyzer:
         """Add candlestick pattern recognition"""
         try:
             # Doji patterns
-            df['doji'] = ta.candlestick.doji(df['open'], df['high'], df['low'], df['close'])
+            df['doji'] = ta.CDLDOJI(df['open'], df['high'], df['low'], df['close'])
 
             # Hammer patterns
-            df['hammer'] = ta.candlestick.hammer(df['open'], df['high'], df['low'], df['close'])
-            df['inverted_hammer'] = ta.candlestick.inverted_hammer(df['open'], df['high'], df['low'], df['close'])
+            df['hammer'] = ta.CDLHAMMER(df['open'], df['high'], df['low'], df['close'])
+            df['inverted_hammer'] = ta.CDLINVERTEDHAMMER(df['open'], df['high'], df['low'], df['close'])
 
             # Engulfing patterns
-            df['bullish_engulfing'] = ta.candlestick.bullish_engulfing(df['open'], df['high'], df['low'], df['close'])
-            df['bearish_engulfing'] = ta.candlestick.bearish_engulfing(df['open'], df['high'], df['low'], df['close'])
+            df['bullish_engulfing'] = ta.CDLENGULFING(df['open'], df['high'], df['low'], df['close'])
+            df['bearish_engulfing'] = ta.CDLENGULFING(df['open'], df['high'], df['low'], df['close'])
 
             # Star patterns
-            df['morning_star'] = ta.candlestick.morning_star(df['open'], df['high'], df['low'], df['close'])
-            df['evening_star'] = ta.candlestick.evening_star(df['open'], df['high'], df['low'], df['close'])
+            df['morning_star'] = ta.CDLMORNINGSTAR(df['open'], df['high'], df['low'], df['close'])
+            df['evening_star'] = ta.CDLEVENINGSTAR(df['open'], df['high'], df['low'], df['close'])
 
             return df
         except Exception as e:

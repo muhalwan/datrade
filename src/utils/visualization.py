@@ -303,7 +303,6 @@ class TradingVisualizer:
             strategy_returns: np.ndarray,
             index: pd.DatetimeIndex
     ) -> go.Figure:
-        """Plot risk analysis dashboard"""
         try:
             fig = make_subplots(
                 rows=2, cols=2,
@@ -312,7 +311,8 @@ class TradingVisualizer:
                     'Rolling Volatility',
                     'Value at Risk',
                     'Risk Contribution'
-                )
+                ),
+                specs=[[{"type": "xy"}, {"type": "xy"}], [{"type": "xy"}, {"type": "domain"}]]
             )
 
             # 1. Drawdown Analysis

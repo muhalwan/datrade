@@ -219,7 +219,6 @@ class FeatureSelector:
             return X, {}
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        """Transform new data using selected features"""
         try:
             # Add technical features
             X = self.add_trend_features(X)
@@ -232,7 +231,7 @@ class FeatureSelector:
 
             # Handle missing values
             X = X.replace([np.inf, -np.inf], np.nan)
-            X = X.fillna(method='ffill').fillna(method='bfill')
+            X = X.ffill().bfill()  # Replace fillna with ffill/bfill
 
             # Scale features
             X_scaled = self.scaler.transform(X)
