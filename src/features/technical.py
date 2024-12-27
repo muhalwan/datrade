@@ -78,8 +78,9 @@ class TechnicalFeatureCalculator:
             return df
 
     def _add_moving_averages(self, df: pd.DataFrame, window: int) -> pd.DataFrame:
-        """Add moving average indicators"""
         try:
+            df = df.copy()
+
             # Simple Moving Average
             df[f'sma_{window}'] = ta.SMA(df['close'], timeperiod=window)
 
@@ -90,14 +91,15 @@ class TechnicalFeatureCalculator:
             df[f'ma_position_{window}'] = (df['close'] - df[f'sma_{window}']) / df[f'sma_{window}']
 
             # Moving Average Slopes
-            df[f'sma_slope_{window}'] = df[f'sma_{window}'].diff(5) / df[f'sma_{window}'].shift(5)
-            df[f'ema_slope_{window}'] = df[f'ema_{window}'].diff(5) / df[f'ema_{window}'].shift(5)
+            df[f'sma_slope_{window}'] = (df[f'sma_{window}'] - df[f'sma_{window}'].shift(5)) / df[f'sma_{window}'].shift(5)
+            df[f'ema_slope_{window}'] = (df[f'ema_{window}'] - df[f'ema_{window}'].shift(5)) / df[f'ema_{window}'].shift(5)
 
             # Moving Average Crossovers
             if window < 100:
-                df[f'ma_cross_{window}'] = (
-                        (df[f'sma_{window}'] > df[f'sma_{window*2}']) &
-                        (df[f'sma_{window}'].shift(1) <= df[f'sma_{window*2}'].shift(1))
+                next_period = window * 2
+                df[f'ma_cross_{window}_{next_period}'] = (
+                        (df[f'sma_{window}'] > df[f'sma_{next_period}']) &
+                        (df[f'sma_{window}'].shift(1) <= df[f'sma_{next_period}'].shift(1))
                 ).astype(int)
 
             return df
@@ -108,15 +110,17 @@ class TechnicalFeatureCalculator:
     def _add_momentum_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
         """Add momentum indicators"""
         try:
+            df = df.copy()
+
             # RSI
             df['rsi'] = ta.RSI(df['close'])
-            df['rsi_ma'] = ta.SMA(df['rsi'], window=14)
+            df['rsi_ma'] = ta.SMA(df['rsi'], timeperiod=14)
 
             # MACD
-            macd = ta.MACD(df['close'])
-            df['macd'] = macd.macd()
-            df['macd_signal'] = macd.macd_signal()
-            df['macd_diff'] = macd.macd_diff()
+            macd, macd_signal, macd_hist = ta.MACD(df['close'])
+            df['macd'] = macd
+            df['macd_signal'] = macd_signal
+            df['macd_diff'] = macd_hist
             df['macd_crossing'] = (
                     (df['macd'] > df['macd_signal']) &
                     (df['macd'].shift(1) <= df['macd_signal'].shift(1))
@@ -143,13 +147,14 @@ class TechnicalFeatureCalculator:
             return df
 
     def _add_volatility_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add volatility indicators"""
         try:
+            df = df.copy()
+
             # Bollinger Bands
-            bb = ta.BBANDS(df['close'])
-            df['bb_high'] = bb.bollinger_hband()
-            df['bb_mid'] = bb.bollinger_mavg()
-            df['bb_low'] = bb.bollinger_lband()
+            upper, middle, lower = ta.BBANDS(df['close'])
+            df['bb_high'] = upper
+            df['bb_mid'] = middle
+            df['bb_low'] = lower
             df['bb_width'] = (df['bb_high'] - df['bb_low']) / df['bb_mid']
             df['bb_position'] = (df['close'] - df['bb_low']) / (df['bb_high'] - df['bb_low'])
 
@@ -158,10 +163,12 @@ class TechnicalFeatureCalculator:
             df['atr_percent'] = df['atr'] / df['close']
 
             # Keltner Channels
-            kc = ta.KELTNER(df['high'], df['low'], df['close'])
-            df['kc_high'] = kc.keltner_channel_hband()
-            df['kc_mid'] = kc.keltner_channel_mband()
-            df['kc_low'] = kc.keltner_channel_lband()
+            # Keltner Channels are not directly available in TA-Lib, so we calculate them manually
+            atr = ta.ATR(df['high'], df['low'], df['close'], timeperiod=20)
+            ema = ta.EMA(df['close'], timeperiod=20)
+            df['kc_high'] = ema + 2 * atr
+            df['kc_mid'] = ema
+            df['kc_low'] = ema - 2 * atr
 
             # Volatility regimes
             df['volatility'] = df['returns'].rolling(window=20).std() * np.sqrt(252)
@@ -176,13 +183,15 @@ class TechnicalFeatureCalculator:
     def _add_volume_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """Add volume-based indicators"""
         try:
+            df = df.copy()
+
             # Volume trends
-            df['volume_sma'] = ta.SMA(df['volume'], window=20)
+            df['volume_sma'] = ta.SMA(df['volume'], timeperiod=20)
             df['volume_ratio'] = df['volume'] / df['volume_sma']
 
             # On-Balance Volume
             df['obv'] = ta.OBV(df['close'], df['volume'])
-            df['obv_sma'] = ta.SMA(df['obv'], window=20)
+            df['obv_sma'] = ta.SMA(df['obv'], timeperiod=20)
 
             # Volume Force Index
             df['force_index'] = ta.FORCE(df['close'], df['volume'])
