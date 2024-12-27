@@ -1,3 +1,5 @@
+# src/features/technical.py
+
 import pandas as pd
 import numpy as np
 import talib as ta
@@ -12,13 +14,14 @@ class TechnicalPattern:
     signal: int  # 1 for bullish, -1 for bearish, 0 for neutral
 
 class TechnicalFeatureCalculator:
-    """Advanced technical analysis system"""
+    """Advanced technical analysis system."""
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
 
     def calculate_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Calculate all technical features"""
+        """Calculate all technical features."""
         try:
             # Make copy to avoid modifying original
             data = df.copy()
@@ -30,7 +33,7 @@ class TechnicalFeatureCalculator:
             data = self._add_volume_features(data)
 
             # Add moving averages for multiple timeframes
-            for window in [5, 10, 20, 50, 100]:
+            for window in [5, 10, 20, 40, 50, 100]:
                 data = self._add_moving_averages(data, window)
 
             # Add momentum indicators
@@ -42,6 +45,9 @@ class TechnicalFeatureCalculator:
             # Add pattern recognition features
             data = self._add_pattern_features(data)
 
+            # Drop any remaining NaN values
+            data.dropna(inplace=True)
+
             return data
 
         except Exception as e:
@@ -49,7 +55,7 @@ class TechnicalFeatureCalculator:
             return pd.DataFrame()
 
     def _add_price_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add price-based features"""
+        """Add price-based features."""
         try:
             df = df.copy()
 
@@ -70,7 +76,7 @@ class TechnicalFeatureCalculator:
             for window in [20, 50]:
                 df[f'highest_{window}'] = df['high'].rolling(window=window).max()
                 df[f'lowest_{window}'] = df['low'].rolling(window=window).min()
-                df[f'price_position_{window}'] = (df['close'] - df[f'lowest_{window}']) / (df[f'highest_{window}'] - df[f'lowest_{window}'])
+                df[f'price_position_{window}'] = (df['close'] - df[f'lowest_{window}']) / (df[f'highest_{window}'] - df[f'lowest_{window}']).replace(0, np.nan)
 
             return df
         except Exception as e:
@@ -78,6 +84,7 @@ class TechnicalFeatureCalculator:
             return df
 
     def _add_moving_averages(self, df: pd.DataFrame, window: int) -> pd.DataFrame:
+        """Add moving averages and related features."""
         try:
             df = df.copy()
 
@@ -88,19 +95,21 @@ class TechnicalFeatureCalculator:
             df[f'ema_{window}'] = ta.EMA(df['close'], timeperiod=window)
 
             # Moving Average Position
-            df[f'ma_position_{window}'] = (df['close'] - df[f'sma_{window}']) / df[f'sma_{window}']
+            df[f'ma_position_{window}'] = (df['close'] - df[f'sma_{window}']) / df[f'sma_{window}'].replace(0, np.nan)
 
             # Moving Average Slopes
-            df[f'sma_slope_{window}'] = (df[f'sma_{window}'] - df[f'sma_{window}'].shift(5)) / df[f'sma_{window}'].shift(5)
-            df[f'ema_slope_{window}'] = (df[f'ema_{window}'] - df[f'ema_{window}'].shift(5)) / df[f'ema_{window}'].shift(5)
+            df[f'sma_slope_{window}'] = (df[f'sma_{window}'] - df[f'sma_{window}'].shift(5)) / df[f'sma_{window}'].shift(5).replace(0, np.nan)
+            df[f'ema_slope_{window}'] = (df[f'ema_{window}'] - df[f'ema_{window}'].shift(5)) / df[f'ema_{window}'].shift(5).replace(0, np.nan)
 
             # Moving Average Crossovers
-            if window < 100:
-                next_period = window * 2
-                df[f'ma_cross_{window}_{next_period}'] = (
-                        (df[f'sma_{window}'] > df[f'sma_{next_period}']) &
-                        (df[f'sma_{window}'].shift(1) <= df[f'sma_{next_period}'].shift(1))
-                ).astype(int)
+            # Ensure that the next_period moving averages exist
+            next_period = window * 2
+            if next_period in [5, 10, 20, 40, 50, 100]:
+                if f'sma_{next_period}' in df.columns and f'ema_{next_period}' in df.columns:
+                    df[f'ma_cross_{window}_{next_period}'] = (
+                            (df[f'sma_{window}'] > df[f'sma_{next_period}']) &
+                            (df[f'sma_{window}'].shift(1) <= df[f'sma_{next_period}'].shift(1))
+                    ).astype(int)
 
             return df
         except Exception as e:
@@ -108,38 +117,30 @@ class TechnicalFeatureCalculator:
             return df
 
     def _add_momentum_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add momentum indicators"""
+        """Add momentum indicators."""
         try:
             df = df.copy()
 
             # RSI
-            df['rsi'] = ta.RSI(df['close'])
-            df['rsi_ma'] = ta.SMA(df['rsi'], timeperiod=14)
+            df['rsi'] = ta.RSI(df['close'], timeperiod=14)
 
             # MACD
-            macd, macd_signal, macd_hist = ta.MACD(df['close'])
+            macd, macd_signal, macd_hist = ta.MACD(df['close'], fastperiod=12, slowperiod=26, signalperiod=9)
             df['macd'] = macd
             df['macd_signal'] = macd_signal
             df['macd_diff'] = macd_hist
-            df['macd_crossing'] = (
-                    (df['macd'] > df['macd_signal']) &
-                    (df['macd'].shift(1) <= df['macd_signal'].shift(1))
-            ).astype(int)
 
-            # Stochastic
-            stoch = ta.STOCH(df['high'], df['low'], df['close'])
-            df['stoch_k'] = stoch.stoch()
-            df['stoch_d'] = stoch.stoch_signal()
+            # Stochastic Oscillator
+            stoch_k, stoch_d = ta.STOCH(df['high'], df['low'], df['close'], fastk_period=14, slowk_period=3, slowk_matype=0, slowd_period=3, slowd_matype=0)
+            df['stoch_k'] = stoch_k
+            df['stoch_d'] = stoch_d
 
             # Rate of Change
-            for period in [9, 21]:
-                df[f'roc_{period}'] = ta.ROC(df['close'], period)
+            for period in [5, 10, 20]:
+                df[f'roc_{period}'] = ta.ROC(df['close'], timeperiod=period)
 
             # Average Directional Index
-            adx = ta.ADX(df['high'], df['low'], df['close'])
-            df['adx'] = adx.adx()
-            df['adx_pos'] = adx.adx_pos()
-            df['adx_neg'] = adx.adx_neg()
+            df['adx'] = ta.ADX(df['high'], df['low'], df['close'], timeperiod=14)
 
             return df
         except Exception as e:
@@ -147,28 +148,29 @@ class TechnicalFeatureCalculator:
             return df
 
     def _add_volatility_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add volatility indicators."""
         try:
             df = df.copy()
 
             # Bollinger Bands
-            upper, middle, lower = ta.BBANDS(df['close'])
-            df['bb_high'] = upper
-            df['bb_mid'] = middle
-            df['bb_low'] = lower
-            df['bb_width'] = (df['bb_high'] - df['bb_low']) / df['bb_mid']
-            df['bb_position'] = (df['close'] - df['bb_low']) / (df['bb_high'] - df['bb_low'])
+            upper, middle, lower = ta.BBANDS(df['close'], timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)
+            df['bb_upper'] = upper
+            df['bb_middle'] = middle
+            df['bb_lower'] = lower
+            df['bb_width'] = (upper - lower) / middle.replace(0, np.nan)
+            df['bb_position'] = (df['close'] - lower) / (upper - lower).replace(0, np.nan)
 
             # Average True Range
-            df['atr'] = ta.ATR(df['high'], df['low'], df['close'])
-            df['atr_percent'] = df['atr'] / df['close']
+            df['atr'] = ta.ATR(df['high'], df['low'], df['close'], timeperiod=14)
+            df['atr_percent'] = df['atr'] / df['close'].replace(0, np.nan)
 
             # Keltner Channels
-            # Keltner Channels are not directly available in TA-Lib, so we calculate them manually
-            atr = ta.ATR(df['high'], df['low'], df['close'], timeperiod=20)
+            # Calculate EMA and ATR for Keltner Channels
             ema = ta.EMA(df['close'], timeperiod=20)
-            df['kc_high'] = ema + 2 * atr
-            df['kc_mid'] = ema
-            df['kc_low'] = ema - 2 * atr
+            atr_kc = ta.ATR(df['high'], df['low'], df['close'], timeperiod=20)
+            df['kc_upper'] = ema + (atr_kc * 1.5)
+            df['kc_middle'] = ema
+            df['kc_lower'] = ema - (atr_kc * 1.5)
 
             # Volatility regimes
             df['volatility'] = df['returns'].rolling(window=20).std() * np.sqrt(252)
@@ -181,29 +183,24 @@ class TechnicalFeatureCalculator:
             return df
 
     def _add_volume_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add volume-based indicators"""
+        """Add volume-based indicators."""
         try:
             df = df.copy()
 
             # Volume trends
             df['volume_sma'] = ta.SMA(df['volume'], timeperiod=20)
-            df['volume_ratio'] = df['volume'] / df['volume_sma']
+            df['volume_ratio'] = df['volume'] / df['volume_sma'].replace(0, np.nan)
 
             # On-Balance Volume
             df['obv'] = ta.OBV(df['close'], df['volume'])
             df['obv_sma'] = ta.SMA(df['obv'], timeperiod=20)
 
-            # Volume Force Index
-            df['force_index'] = ta.FORCE(df['close'], df['volume'])
-
             # Money Flow Index
-            df['mfi'] = ta.MFI(df['high'], df['low'], df['close'], df['volume'])
-
-            # Ease of Movement
-            df['eom'] = ta.EOM(df['high'], df['low'], df['volume'])
+            df['mfi'] = ta.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14)
 
             # Volume-weighted Average Price
-            df['vwap'] = (df['volume'] * (df['high'] + df['low'] + df['close']) / 3).cumsum() / df['volume'].cumsum()
+            vwap = (df['volume'] * (df['high'] + df['low'] + df['close']) / 3).cumsum() / df['volume'].cumsum()
+            df['vwap'] = vwap
 
             return df
         except Exception as e:
@@ -211,8 +208,10 @@ class TechnicalFeatureCalculator:
             return df
 
     def _add_pattern_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add candlestick pattern recognition"""
+        """Add candlestick pattern recognition."""
         try:
+            df = df.copy()
+
             # Doji patterns
             df['doji'] = ta.CDLDOJI(df['open'], df['high'], df['low'], df['close'])
 
@@ -232,77 +231,3 @@ class TechnicalFeatureCalculator:
         except Exception as e:
             self.logger.error(f"Error adding pattern features: {e}")
             return df
-
-    def identify_patterns(self, df: pd.DataFrame) -> List[TechnicalPattern]:
-        """Identify technical patterns in price data"""
-        patterns = []
-
-        try:
-            # Head and Shoulders
-            if self._is_head_and_shoulders(df):
-                patterns.append(TechnicalPattern(
-                    name="Head and Shoulders",
-                    confidence=0.8,
-                    signal=-1
-                ))
-
-            # Double Top/Bottom
-            if self._is_double_top(df):
-                patterns.append(TechnicalPattern(
-                    name="Double Top",
-                    confidence=0.7,
-                    signal=-1
-                ))
-            elif self._is_double_bottom(df):
-                patterns.append(TechnicalPattern(
-                    name="Double Bottom",
-                    confidence=0.7,
-                    signal=1
-                ))
-
-            # Flag/Pennant
-            if self._is_bull_flag(df):
-                patterns.append(TechnicalPattern(
-                    name="Bull Flag",
-                    confidence=0.6,
-                    signal=1
-                ))
-
-            return patterns
-
-        except Exception as e:
-            self.logger.error(f"Error identifying patterns: {e}")
-            return []
-
-    def _is_head_and_shoulders(self, df: pd.DataFrame, lookback: int = 100) -> bool:
-        """Identify head and shoulders pattern"""
-        try:
-            data = df.tail(lookback)
-            peaks = self._find_peaks(data['high'].values)
-
-            if len(peaks) >= 3:
-                # Check for characteristic peak heights
-                left_shoulder = peaks[-3]
-                head = peaks[-2]
-                right_shoulder = peaks[-1]
-
-                if (head > left_shoulder and
-                        head > right_shoulder and
-                        abs(left_shoulder - right_shoulder) / left_shoulder < 0.1):
-                    return True
-
-            return False
-
-        except Exception as e:
-            self.logger.error(f"Error in head and shoulders detection: {e}")
-            return False
-
-    def _find_peaks(self, data: np.ndarray, min_dist: int = 10) -> np.ndarray:
-        """Find peaks in price data"""
-        try:
-            from scipy.signal import find_peaks
-            peaks, _ = find_peaks(data, distance=min_dist)
-            return peaks
-        except Exception as e:
-            self.logger.error(f"Error finding peaks: {e}")
-            return np.array([])

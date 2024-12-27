@@ -24,23 +24,28 @@ class EnhancedEnsemble(BaseModel):
                 'learning_rate': 0.001
             },
             'xgboost': {
+                'objective': 'binary:logistic',
+                'eval_metric': 'logloss',
                 'max_depth': 4,
                 'learning_rate': 0.05,
                 'subsample': 0.8,
                 'colsample_bytree': 0.8,
                 'min_child_weight': 3,
-                'gamma': 0.1
+                'gamma': 0.1,
+                'reg_alpha': 0.1,
+                'reg_lambda': 1.0,
+                'scale_pos_weight': 1.0
             }
         }
 
-        # Initialize models
+        # Initialize models with corrected parameter passing
         self.models = {
             'lstm': LSTMModel(**self.config['lstm']),
-            'xgboost': XGBoostModel(self.config['xgboost'])
+            'xgboost': XGBoostModel(params=self.config['xgboost'])  # Corrected
         }
 
         # Initialize components
-        self.feature_selector = FeatureSelector()
+        self.feature_selector = FeatureSelector(method='mutual_info', k='all')
         self.scaler = StandardScaler()
 
         # Model weights and performance tracking
@@ -48,21 +53,50 @@ class EnhancedEnsemble(BaseModel):
         self.model_performance = {}
         self.validation_metrics = {}
 
-    def _prepare_data(self, X: pd.DataFrame, y: pd.Series) -> Tuple[pd.DataFrame, Dict[str, float]]:
-        """Prepare and select features"""
+    def _prepare_data_lstm(self, X: pd.DataFrame, y: pd.Series) -> Tuple[np.ndarray, np.ndarray]:
+        """Prepare data for LSTM model"""
         try:
             # Select features
-            X_selected, feature_importance = self.feature_selector.select_features(X, y)
+            self.feature_selector.fit(X, y)
+            X_selected = self.feature_selector.transform(X)
+            feature_importance = self.feature_selector.get_feature_importance()
 
             # Scale features
             X_scaled = self.scaler.fit_transform(X_selected)
-            X_scaled = pd.DataFrame(X_scaled, columns=X_selected.columns, index=X_selected.index)
 
-            return X_scaled, feature_importance
+            # Create sequences
+            sequence_length = self.config['lstm']['sequence_length']
+            sequences = []
+            targets = []
+            for i in range(len(X_scaled) - sequence_length):
+                sequences.append(X_scaled[i:i + sequence_length])
+                targets.append(y.iloc[i + sequence_length])
+
+            X_seq = np.array(sequences)
+            y_seq = np.array(targets)
+
+            return X_seq, y_seq
 
         except Exception as e:
-            self.logger.error(f"Error preparing data: {e}")
-            return X, {}
+            self.logger.error(f"Error preparing data for LSTM: {e}")
+            return np.array([]), np.array([])
+
+    def _prepare_data_xgboost(self, X: pd.DataFrame, y: pd.Series) -> Tuple[pd.DataFrame, pd.Series]:
+        """Prepare data for XGBoost model"""
+        try:
+            # Select features (assuming feature_selector is already fitted)
+            X_selected = self.feature_selector.transform(X)
+            feature_importance = self.feature_selector.get_feature_importance()
+
+            # Scale features
+            X_scaled = self.scaler.transform(X_selected)
+            X_scaled_df = pd.DataFrame(X_scaled, columns=X_selected.columns, index=X_selected.index)
+
+            return X_scaled_df, y
+
+        except Exception as e:
+            self.logger.error(f"Error preparing data for XGBoost: {e}")
+            return pd.DataFrame(), pd.Series()
 
     def _validate_model(
             self,
@@ -92,11 +126,26 @@ class EnhancedEnsemble(BaseModel):
                 X_val = X.iloc[val_idx]
                 y_val = y.iloc[val_idx]
 
-                # Train model
-                model.train(X_train, y_train)
-
-                # Get predictions
-                val_pred = model.predict(X_val)
+                # Prepare data based on model type
+                if model_name == 'lstm':
+                    X_train_seq, y_train_seq = self._prepare_data_lstm(X_train, y_train)
+                    X_val_seq, y_val_seq = self._prepare_data_lstm(X_val, y_val)
+                    if X_train_seq.size == 0 or X_val_seq.size == 0:
+                        self.logger.warning(f"Insufficient data for training/validation for {model_name}")
+                        continue
+                    model.train(X_train_seq, y_train_seq)
+                    val_pred = model.predict(X_val_seq)
+                elif model_name == 'xgboost':
+                    X_train_prepared, y_train_prepared = self._prepare_data_xgboost(X_train, y_train)
+                    X_val_prepared, y_val_prepared = self._prepare_data_xgboost(X_val, y_val)
+                    if X_train_prepared.empty or X_val_prepared.empty:
+                        self.logger.warning(f"Insufficient data for training/validation for {model_name}")
+                        continue
+                    model.train(X_train_prepared, y_train_prepared)
+                    val_pred = model.predict(X_val_prepared)
+                else:
+                    self.logger.warning(f"Unknown model type: {model_name}")
+                    continue
 
                 # Calculate metrics
                 metrics['accuracy'].append(self._calculate_accuracy(y_val, val_pred))
@@ -132,7 +181,7 @@ class EnhancedEnsemble(BaseModel):
             total_score = sum(scores.values())
             if total_score > 0:
                 self.weights = {
-                    name: score/total_score
+                    name: score / total_score
                     for name, score in scores.items()
                 }
 
@@ -144,8 +193,10 @@ class EnhancedEnsemble(BaseModel):
         try:
             self.logger.info("Starting ensemble training...")
 
-            # Prepare data
-            X_prepared, feature_importance = self._prepare_data(X, y)
+            # Validate that 'returns' column exists if needed for metrics
+            if 'returns' not in X.columns:
+                self.logger.error("'returns' column is missing in the feature set.")
+                return
 
             # Validate and train models
             performance = {}
@@ -153,18 +204,14 @@ class EnhancedEnsemble(BaseModel):
                 self.logger.info(f"Training {name}...")
 
                 # Validate model
-                metrics = self._validate_model(name, model, X_prepared, y)
+                metrics = self._validate_model(name, model, X, y)
                 performance[name] = metrics
-
-                # Train final model
-                model.train(X_prepared, y)
 
             # Adjust weights
             self._adjust_weights(performance)
 
             # Store metadata
             self.model_performance = performance
-            self.feature_importance = feature_importance
 
             self.logger.info("Ensemble training completed")
 
@@ -175,10 +222,17 @@ class EnhancedEnsemble(BaseModel):
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         """Make predictions with confidence scores"""
         try:
-            # Prepare features
-            X_prepared = self.feature_selector.transform(X)
-            X_scaled = self.scaler.transform(X_prepared)
-            X_scaled = pd.DataFrame(X_scaled, columns=X_prepared.columns, index=X_prepared.index)
+            # Ensure 'returns' column exists if needed
+            if 'returns' not in X.columns:
+                self.logger.error("'returns' column is missing in the feature set.")
+                return np.zeros(len(X))
+
+            # Select features
+            X_selected = self.feature_selector.transform(X)
+
+            # Scale features
+            X_scaled = self.scaler.transform(X_selected)
+            X_scaled_df = pd.DataFrame(X_scaled, columns=X_selected.columns, index=X_selected.index)
 
             predictions = {}
             working_models = 0
@@ -186,10 +240,28 @@ class EnhancedEnsemble(BaseModel):
             # Get predictions from each model
             for name, model in self.models.items():
                 try:
-                    pred = model.predict(X_scaled)
-                    if len(pred) == len(X):
+                    if name == 'lstm':
+                        # Prepare sequences for LSTM
+                        sequence_length = self.config['lstm']['sequence_length']
+                        sequences = []
+                        for i in range(len(X_scaled_df) - sequence_length):
+                            sequences.append(X_scaled_df.iloc[i:i + sequence_length].values)
+                        if not sequences:
+                            self.logger.warning(f"Insufficient data for LSTM predictions.")
+                            continue
+                        X_seq = np.array(sequences)
+                        pred = model.predict(X_seq)
+                        # Align predictions with original data
+                        pred_full = np.zeros(len(X))
+                        pred_full[sequence_length:] = pred
+                        predictions[name] = pred_full
+                    elif name == 'xgboost':
+                        pred = model.predict(X_scaled_df)
                         predictions[name] = pred
-                        working_models += 1
+                    else:
+                        self.logger.warning(f"Unknown model type: {name}")
+                        continue
+                    working_models += 1
                 except Exception as e:
                     self.logger.warning(f"Model {name} failed to predict: {e}")
 
@@ -199,7 +271,7 @@ class EnhancedEnsemble(BaseModel):
             # Calculate weighted predictions
             weighted_pred = np.zeros(len(X))
             for name, pred in predictions.items():
-                weighted_pred += pred * self.weights[name]
+                weighted_pred += pred * self.weights.get(name, 0)
 
             return weighted_pred
 
@@ -214,10 +286,46 @@ class EnhancedEnsemble(BaseModel):
             for name, model in self.models.items():
                 model_importance = model.get_feature_importance()
                 for feature, score in model_importance.items():
-                    importance[feature] = importance.get(feature, 0) + score * self.weights[name]
+                    importance[feature] = importance.get(feature, 0) + score * self.weights.get(name, 0)
+
+            # Normalize importance
+            total = sum(importance.values())
+            if total > 0:
+                importance = {k: v / total for k, v in importance.items()}
 
             return importance
 
         except Exception as e:
             self.logger.error(f"Error getting feature importance: {e}")
             return {}
+
+    # Placeholder methods for metric calculations
+    def _calculate_accuracy(self, y_true: pd.Series, y_pred: np.ndarray) -> float:
+        return np.mean(y_true == y_pred)
+
+    def _calculate_precision(self, y_true: pd.Series, y_pred: np.ndarray) -> float:
+        true_positive = np.sum((y_true == 1) & (y_pred == 1))
+        predicted_positive = np.sum(y_pred == 1)
+        return true_positive / predicted_positive if predicted_positive > 0 else 0.0
+
+    def _calculate_recall(self, y_true: pd.Series, y_pred: np.ndarray) -> float:
+        true_positive = np.sum((y_true == 1) & (y_pred == 1))
+        actual_positive = np.sum(y_true == 1)
+        return true_positive / actual_positive if actual_positive > 0 else 0.0
+
+    def _calculate_f1(self, y_true: pd.Series, y_pred: np.ndarray) -> float:
+        precision = self._calculate_precision(y_true, y_pred)
+        recall = self._calculate_recall(y_true, y_pred)
+        return 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+
+    def _calculate_sharpe(self, predictions: np.ndarray, returns: pd.Series) -> float:
+        # Placeholder implementation
+        return 0.0
+
+    def _calculate_sortino(self, predictions: np.ndarray, returns: pd.Series) -> float:
+        # Placeholder implementation
+        return 0.0
+
+    def _calculate_max_drawdown(self, predictions: np.ndarray, returns: pd.Series) -> float:
+        # Placeholder implementation
+        return 0.0
