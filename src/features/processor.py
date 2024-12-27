@@ -233,14 +233,13 @@ class FeatureProcessor:
             features: pd.DataFrame,
             target: pd.Series
     ) -> Tuple[pd.DataFrame, pd.Series]:
-        """Align features and target, handle missing values"""
         try:
             if features.empty or target.empty:
                 return pd.DataFrame(), pd.Series()
 
             # Handle missing values
             features = features.replace([np.inf, -np.inf], np.nan)
-            features = features.fillna(method='ffill').fillna(method='bfill')
+            features = features.ffill().bfill()
 
             # Remove low variance features
             feature_std = features.std()

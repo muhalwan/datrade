@@ -16,7 +16,6 @@ class FeatureSelector:
         self.scaler = StandardScaler()
 
     def add_trend_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add trend-following features"""
         try:
             result = df.copy()
 
@@ -84,7 +83,6 @@ class FeatureSelector:
             result['price_to_resistance'] = df['close'] / result['resistance_level']
 
             return result
-
         except Exception as e:
             self.logger.error(f"Error adding trend features: {e}")
             return df
@@ -175,7 +173,6 @@ class FeatureSelector:
             method: str = 'mutual_info',
             n_features: int = None
     ) -> Tuple[pd.DataFrame, Dict[str, float]]:
-        """Select most important features"""
         try:
             # Add technical features
             X = self.add_trend_features(X)
