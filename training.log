@@ -1,0 +1,25 @@
+2024-12-27 15:29:15,150 - root - ERROR - Configuration file not found at config/config.yaml
+2024-12-27 15:39:14,512 - src.data.database.connection - INFO - Index created for 'price_data' collection.
+2024-12-27 15:39:14,979 - src.data.database.connection - INFO - Index created for 'order_book' collection.
+2024-12-27 15:39:14,980 - src.data.database.connection - INFO - MongoDB indexes setup completed successfully.
+2024-12-27 15:39:14,980 - src.data.database.connection - INFO - MongoDB connection established successfully to database: crypto_trading
+2024-12-27 15:39:14,980 - __main__ - INFO - Starting model training...
+2024-12-27 15:39:14,981 - __main__ - INFO - Training Configuration:
+Symbol: BTCUSDT
+Start Date: 2024-10-28 15:39:14.981005
+End Date: 2024-12-27 15:39:14.981005
+2024-12-27 15:39:14,981 - src.data.database.connection - ERROR - Unexpected error fetching price data: Database objects do not implement truth value testing or bool(). Please compare with None instead: database is not None
+2024-12-27 15:39:14,981 - src.data.database.connection - ERROR - Unexpected error fetching orderbook data: Database objects do not implement truth value testing or bool(). Please compare with None instead: database is not None
+2024-12-27 15:39:15,006 - src.data.database.connection - INFO - MongoDB connection closed successfully.
+2024-12-27 16:57:31,819 - src.data.database.connection - INFO - Index created for 'price_data' collection.
+2024-12-27 16:57:32,206 - src.data.database.connection - INFO - Index created for 'order_book' collection.
+2024-12-27 16:57:32,206 - src.data.database.connection - INFO - MongoDB indexes setup completed successfully.
+2024-12-27 16:57:32,206 - src.data.database.connection - INFO - MongoDB connection established successfully to database: crypto_trading
+2024-12-27 16:57:32,207 - __main__ - INFO - Starting model training...
+2024-12-27 16:57:32,207 - __main__ - INFO - Training Configuration:
+Symbol: BTCUSDT
+Start Date: 2024-10-28 16:57:32.207452
+End Date: 2024-12-27 16:57:32.207452
+2024-12-27 16:57:32,207 - src.data.database.connection - ERROR - Unexpected error fetching price data: Database objects do not implement truth value testing or bool(). Please compare with None instead: database is not None
+2024-12-27 16:57:32,207 - src.data.database.connection - ERROR - Unexpected error fetching orderbook data: Database objects do not implement truth value testing or bool(). Please compare with None instead: database is not None
+2024-12-27 16:57:32,230 - src.data.database.connection - INFO - MongoDB connection closed successfully.

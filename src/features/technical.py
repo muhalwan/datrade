@@ -1,231 +1,132 @@
 import pandas as pd
 import numpy as np
-import talib as ta
+from typing import Optional
 import logging
-from typing import Optional, Dict, List
-from dataclasses import dataclass
+import talib
 
-@dataclass
-class TechnicalPattern:
-    name: str
-    confidence: float
-    signal: int  # 1 for bullish, -1 for bearish, 0 for neutral
-
-class TechnicalFeatureCalculator:
-    """Advanced technical analysis system."""
+class TechnicalIndicators:
+    """
+    Calculates a wide range of technical indicators using TA-Lib.
+    """
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.INFO)
 
-    def calculate_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Calculate all technical features."""
+    def calculate(self, price_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Calculates technical indicators and returns a DataFrame.
+
+        Args:
+            price_data (pd.DataFrame): OHLCV price data.
+
+        Returns:
+            pd.DataFrame: DataFrame containing technical indicators.
+        """
         try:
-            # Make copy to avoid modifying original
-            data = df.copy()
+            indicators = {}
+            close = price_data['close'].values
+            high = price_data['high'].values
+            low = price_data['low'].values
+            volume = price_data['volume'].values
 
-            # Add basic price features
-            data = self._add_price_features(data)
+            # Moving Averages
+            indicators['sma_5'] = talib.SMA(close, timeperiod=5)
+            indicators['ema_5'] = talib.EMA(close, timeperiod=5)
+            indicators['sma_10'] = talib.SMA(close, timeperiod=10)
+            indicators['ema_10'] = talib.EMA(close, timeperiod=10)
+            indicators['sma_20'] = talib.SMA(close, timeperiod=20)
+            indicators['ema_20'] = talib.EMA(close, timeperiod=20)
+            indicators['sma_50'] = talib.SMA(close, timeperiod=50)
+            indicators['ema_50'] = talib.EMA(close, timeperiod=50)
+            indicators['sma_100'] = talib.SMA(close, timeperiod=100)
+            indicators['ema_100'] = talib.EMA(close, timeperiod=100)
 
-            # Add volume features
-            data = self._add_volume_features(data)
+            # Momentum Indicators
+            indicators['rsi'] = talib.RSI(close, timeperiod=14)
+            indicators['stoch_k'], indicators['stoch_d'] = talib.STOCH(high, low, close, fastk_period=14, slowk_period=3, slowk_matype=0, slowd_period=3, slowd_matype=0)
+            indicators['macd'], indicators['macd_signal'], indicators['macd_hist'] = talib.MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
 
-            # Add moving averages for multiple timeframes
-            for window in [5, 10, 20, 40, 50, 100]:
-                data = self._add_moving_averages(data, window)
+            # Volatility Indicators
+            indicators['atr'] = talib.ATR(high, low, close, timeperiod=14)
+            indicators['bb_upper'], indicators['bb_middle'], indicators['bb_lower'] = talib.BBANDS(close, timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)
+            indicators['bb_width'] = indicators['bb_upper'] - indicators['bb_lower']
+            indicators['kc_middle'], indicators['kc_upper'], indicators['kc_lower'] = talib.KC(close, high, low, timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)
 
-            # Add momentum indicators
-            data = self._add_momentum_indicators(data)
+            # Volume Indicators
+            indicators['obv'] = talib.OBV(close, volume)
+            indicators['obv_sma'] = talib.SMA(indicators['obv'], timeperiod=20)
 
-            # Add volatility indicators
-            data = self._add_volatility_indicators(data)
+            # Candlestick Patterns
+            indicators['cdl_engulfing'] = talib.CDLENGULFING(open=price_data['open'].values, high=high, low=low, close=close)
+            indicators['cdl_hammer'] = talib.CDLHAMMER(open=price_data['open'].values, high=high, low=low, close=close)
 
-            # Add pattern recognition features
-            data = self._add_pattern_features(data)
+            # Additional Features
+            indicators['vwap'] = self.calculate_vwap(price_data)
+            indicators['volatility'] = indicators['atr']
+            indicators['volatility_ma'] = talib.SMA(indicators['volatility'], timeperiod=20)
+            indicators['trend_strength_5'] = self.calculate_trend_strength(close, window=5)
+            indicators['trend_strength_20'] = self.calculate_trend_strength(close, window=20)
+            indicators['returns'] = self.calculate_returns(close)
 
-            # Drop any remaining NaN values
-            data.dropna(inplace=True)
-
-            return data
-
+            # Convert to DataFrame
+            tech_df = pd.DataFrame(indicators, index=price_data.index)
+            self.logger.info("Technical indicators calculated successfully.")
+            return tech_df
         except Exception as e:
-            self.logger.error(f"Error calculating technical features: {e}")
+            self.logger.error(f"Error calculating technical indicators: {e}")
             return pd.DataFrame()
 
-    def _add_price_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add price-based features."""
+    def calculate_vwap(self, price_data: pd.DataFrame) -> np.ndarray:
+        """
+        Calculates Volume Weighted Average Price (VWAP).
+
+        Args:
+            price_data (pd.DataFrame): OHLCV price data.
+
+        Returns:
+            np.ndarray: VWAP values.
+        """
         try:
-            df = df.copy()
-
-            # Price changes
-            df['price_change'] = df['close'].diff()
-            df['returns'] = df['close'].pct_change()
-            df['log_returns'] = np.log(df['close']/df['close'].shift(1))
-
-            # Price trends
-            df['higher_high'] = df['high'] > df['high'].shift(1)
-            df['lower_low'] = df['low'] < df['low'].shift(1)
-
-            # Gap analysis
-            df['gap_up'] = df['low'] > df['high'].shift(1)
-            df['gap_down'] = df['high'] < df['low'].shift(1)
-
-            # Price levels
-            for window in [20, 50]:
-                df[f'highest_{window}'] = df['high'].rolling(window=window).max()
-                df[f'lowest_{window}'] = df['low'].rolling(window=window).min()
-                df[f'price_position_{window}'] = (df['close'] - df[f'lowest_{window}']) / (df[f'highest_{window}'] - df[f'lowest_{window}']).replace(0, np.nan)
-
-            return df
+            vwap = (price_data['volume'] * (price_data['high'] + price_data['low'] + price_data['close']) / 3).cumsum() / price_data['volume'].cumsum()
+            return vwap.values
         except Exception as e:
-            self.logger.error(f"Error adding price features: {e}")
-            return df
+            self.logger.error(f"Error calculating VWAP: {e}")
+            return np.full(len(price_data), np.nan)
 
-    def _add_moving_averages(self, df: pd.DataFrame, window: int) -> pd.DataFrame:
-        """Add moving averages and related features."""
+    def calculate_trend_strength(self, close: np.ndarray, window: int = 20) -> np.ndarray:
+        """
+        Calculates trend strength based on moving averages.
+
+        Args:
+            close (np.ndarray): Closing prices.
+            window (int): Window size for moving average.
+
+        Returns:
+            np.ndarray: Trend strength values.
+        """
         try:
-            df = df.copy()
-
-            # Simple Moving Average
-            df[f'sma_{window}'] = ta.SMA(df['close'], timeperiod=window)
-
-            # Exponential Moving Average
-            df[f'ema_{window}'] = ta.EMA(df['close'], timeperiod=window)
-
-            # Moving Average Position
-            df[f'ma_position_{window}'] = (df['close'] - df[f'sma_{window}']) / df[f'sma_{window}'].replace(0, np.nan)
-
-            # Moving Average Slopes
-            df[f'sma_slope_{window}'] = (df[f'sma_{window}'] - df[f'sma_{window}'].shift(5)) / df[f'sma_{window}'].shift(5).replace(0, np.nan)
-            df[f'ema_slope_{window}'] = (df[f'ema_{window}'] - df[f'ema_{window}'].shift(5)) / df[f'ema_{window}'].shift(5).replace(0, np.nan)
-
-            # Moving Average Crossovers
-            # Ensure that the next_period moving averages exist
-            next_period = window * 2
-            if next_period in [5, 10, 20, 40, 50, 100]:
-                if f'sma_{next_period}' in df.columns and f'ema_{next_period}' in df.columns:
-                    df[f'ma_cross_{window}_{next_period}'] = (
-                            (df[f'sma_{window}'] > df[f'sma_{next_period}']) &
-                            (df[f'sma_{window}'].shift(1) <= df[f'sma_{next_period}'].shift(1))
-                    ).astype(int)
-
-            return df
+            sma = talib.SMA(close, timeperiod=window)
+            ema = talib.EMA(close, timeperiod=window)
+            trend_strength = np.abs(ema - sma) / sma
+            return trend_strength
         except Exception as e:
-            self.logger.error(f"Error adding moving averages for window {window}: {e}")
-            return df
+            self.logger.error(f"Error calculating trend strength: {e}")
+            return np.full(len(close), 0.0)
 
-    def _add_momentum_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add momentum indicators."""
+    def calculate_returns(self, close: np.ndarray) -> np.ndarray:
+        """
+        Calculates daily returns.
+
+        Args:
+            close (np.ndarray): Closing prices.
+
+        Returns:
+            np.ndarray: Daily returns.
+        """
         try:
-            df = df.copy()
-
-            # RSI
-            df['rsi'] = ta.RSI(df['close'], timeperiod=14)
-
-            # MACD
-            macd, macd_signal, macd_hist = ta.MACD(df['close'], fastperiod=12, slowperiod=26, signalperiod=9)
-            df['macd'] = macd
-            df['macd_signal'] = macd_signal
-            df['macd_diff'] = macd_hist
-
-            # Stochastic Oscillator
-            stoch_k, stoch_d = ta.STOCH(df['high'], df['low'], df['close'], fastk_period=14, slowk_period=3, slowk_matype=0, slowd_period=3, slowd_matype=0)
-            df['stoch_k'] = stoch_k
-            df['stoch_d'] = stoch_d
-
-            # Rate of Change
-            for period in [5, 10, 20]:
-                df[f'roc_{period}'] = ta.ROC(df['close'], timeperiod=period)
-
-            # Average Directional Index
-            df['adx'] = ta.ADX(df['high'], df['low'], df['close'], timeperiod=14)
-
-            return df
+            returns = np.diff(close) / close[:-1]
+            returns = np.append(returns, 0)  # Append 0 for the last entry
+            return returns
         except Exception as e:
-            self.logger.error(f"Error adding momentum indicators: {e}")
-            return df
-
-    def _add_volatility_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add volatility indicators."""
-        try:
-            df = df.copy()
-
-            # Bollinger Bands
-            upper, middle, lower = ta.BBANDS(df['close'], timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)
-            df['bb_upper'] = upper
-            df['bb_middle'] = middle
-            df['bb_lower'] = lower
-            df['bb_width'] = (upper - lower) / middle.replace(0, np.nan)
-            df['bb_position'] = (df['close'] - lower) / (upper - lower).replace(0, np.nan)
-
-            # Average True Range
-            df['atr'] = ta.ATR(df['high'], df['low'], df['close'], timeperiod=14)
-            df['atr_percent'] = df['atr'] / df['close'].replace(0, np.nan)
-
-            # Keltner Channels
-            # Calculate EMA and ATR for Keltner Channels
-            ema = ta.EMA(df['close'], timeperiod=20)
-            atr_kc = ta.ATR(df['high'], df['low'], df['close'], timeperiod=20)
-            df['kc_upper'] = ema + (atr_kc * 1.5)
-            df['kc_middle'] = ema
-            df['kc_lower'] = ema - (atr_kc * 1.5)
-
-            # Volatility regimes
-            df['volatility'] = df['returns'].rolling(window=20).std() * np.sqrt(252)
-            df['volatility_ma'] = df['volatility'].rolling(window=50).mean()
-            df['high_volatility'] = (df['volatility'] > df['volatility_ma']).astype(int)
-
-            return df
-        except Exception as e:
-            self.logger.error(f"Error adding volatility indicators: {e}")
-            return df
-
-    def _add_volume_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add volume-based indicators."""
-        try:
-            df = df.copy()
-
-            # Volume trends
-            df['volume_sma'] = ta.SMA(df['volume'], timeperiod=20)
-            df['volume_ratio'] = df['volume'] / df['volume_sma'].replace(0, np.nan)
-
-            # On-Balance Volume
-            df['obv'] = ta.OBV(df['close'], df['volume'])
-            df['obv_sma'] = ta.SMA(df['obv'], timeperiod=20)
-
-            # Money Flow Index
-            df['mfi'] = ta.MFI(df['high'], df['low'], df['close'], df['volume'], timeperiod=14)
-
-            # Volume-weighted Average Price
-            vwap = (df['volume'] * (df['high'] + df['low'] + df['close']) / 3).cumsum() / df['volume'].cumsum()
-            df['vwap'] = vwap
-
-            return df
-        except Exception as e:
-            self.logger.error(f"Error adding volume features: {e}")
-            return df
-
-    def _add_pattern_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Add candlestick pattern recognition."""
-        try:
-            df = df.copy()
-
-            # Doji patterns
-            df['doji'] = ta.CDLDOJI(df['open'], df['high'], df['low'], df['close'])
-
-            # Hammer patterns
-            df['hammer'] = ta.CDLHAMMER(df['open'], df['high'], df['low'], df['close'])
-            df['inverted_hammer'] = ta.CDLINVERTEDHAMMER(df['open'], df['high'], df['low'], df['close'])
-
-            # Engulfing patterns
-            df['bullish_engulfing'] = ta.CDLENGULFING(df['open'], df['high'], df['low'], df['close'])
-            df['bearish_engulfing'] = ta.CDLENGULFING(df['open'], df['high'], df['low'], df['close'])
-
-            # Star patterns
-            df['morning_star'] = ta.CDLMORNINGSTAR(df['open'], df['high'], df['low'], df['close'])
-            df['evening_star'] = ta.CDLEVENINGSTAR(df['open'], df['high'], df['low'], df['close'])
-
-            return df
-        except Exception as e:
-            self.logger.error(f"Error adding pattern features: {e}")
-            return df
+            self.logger.error(f"Error calculating returns: {e}")
+            return np.zeros(len(close))

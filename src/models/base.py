@@ -1,45 +1,80 @@
-import logging
-import pickle
-from pathlib import Path
 from abc import ABC, abstractmethod
+from typing import Optional, Dict
+import logging
+
+import numpy as np
 
 
 class BaseModel(ABC):
+    """
+    Abstract base class for all models.
+    """
+
     def __init__(self, name: str):
-        self.logger = logging.getLogger(__name__)
         self.name = name
-        self.training_history = {}
+        self.model = None
+        self.logger = logging.getLogger(__name__)
 
     @abstractmethod
-    def train(self, X, y, **kwargs):
+    def train(self, X, y):
+        """
+        Trains the model.
+
+        Args:
+            X: Features.
+            y: Targets.
+        """
         pass
 
     @abstractmethod
-    def predict(self, X):
+    def predict(self, X) -> Optional[np.ndarray]:
+        """
+        Makes predictions using the trained model.
+
+        Args:
+            X: Features.
+
+        Returns:
+            Optional[np.ndarray]: Prediction probabilities or classes.
+        """
         pass
 
-    def get_feature_importance(self):
-        return {}
+    @abstractmethod
+    def get_feature_importance(self) -> Dict[str, float]:
+        """
+        Retrieves feature importance scores.
 
-    def save(self, model_path: Path) -> bool:
-        """Serialize model + metadata."""
+        Returns:
+            Dict[str, float]: Feature importances.
+        """
+        pass
+
+    def save(self, path: str):
+        """
+        Saves the trained model to the specified path.
+
+        Args:
+            path (str): File path to save the model.
+        """
         try:
-            # Asumsi: sub-class punya .models (dict) atau setidaknya .model
-            if not hasattr(self, 'models') and not hasattr(self, 'model'):
-                raise ValueError("No model to save")
-
-            with open(f"{model_path}.model", "wb") as f:
-                pickle.dump(self, f)
-
-            meta_data = {
-                'name': self.name,
-                'training_history': self.training_history
-            }
-            with open(f"{model_path}.meta", "wb") as f:
-                pickle.dump(meta_data, f)
-
-            self.logger.info(f"Model {self.name} saved successfully.")
-            return True
+            if self.model:
+                self.model.save(path)
+                self.logger.info(f"Model saved to {path}")
+            else:
+                self.logger.warning("No model to save.")
         except Exception as e:
             self.logger.error(f"Error saving model: {e}")
-            return False
+
+    def load(self, path: str):
+        """
+        Loads a trained model from the specified path.
+
+        Args:
+            path (str): File path to load the model from.
+        """
+        try:
+            from tensorflow.keras.models import load_model
+            self.model = load_model(path)
+            self.logger.info(f"Model loaded from {path}")
+        except Exception as e:
+            self.logger.error(f"Error loading model: {e}")

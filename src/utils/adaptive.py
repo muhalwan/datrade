@@ -66,7 +66,9 @@ class AdaptiveLearningSystem:
                 new_lr = np.clip(new_lr, min_lr, max_lr)
                 self.learning_rates[model_name] = new_lr
 
-            return self.learning_rates[model_name]
+                self.logger.debug(f"Adjusted learning rate for {model_name}: {new_lr}")
+
+            return self.learning_rates.get(model_name, 0.001)
 
         except Exception as e:
             self.logger.error(f"Error adjusting learning rate: {e}")
@@ -218,6 +220,7 @@ class AdaptiveLearningSystem:
                     name: score/total_score
                     for name, score in scores.items()
                 }
+                self.logger.debug(f"Updated model weights: {self.model_weights}")
 
         except Exception as e:
             self.logger.error(f"Error updating model weights: {e}")

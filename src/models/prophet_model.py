@@ -1,46 +1,75 @@
-from prophet import Prophet
+from typing import Optional, Dict
 import pandas as pd
-import numpy as np
-from typing import Optional
+import logging
+from fbprophet import Prophet
+
 from .base import BaseModel
 
 class ProphetModel(BaseModel):
-    """Prophet model for time series prediction"""
+    """
+    Prophet Time Series Forecasting Model.
+    """
 
-    def __init__(self, params: Optional[dict] = None):
+    def __init__(self, params: Optional[Dict] = None):
+        """
+        Initializes the ProphetModel with specified hyperparameters.
+
+        Args:
+            params (Optional[Dict]): Hyperparameters for Prophet.
+        """
         super().__init__("prophet")
-        self.params = params or {
-            'changepoint_prior_scale': 0.05,
-            'seasonality_prior_scale': 10,
-            'seasonality_mode': 'multiplicative',
-            'daily_seasonality': True,
-            'weekly_seasonality': True,
-            'yearly_seasonality': True
-        }
+        self.params = params if params else {}
+        self.model = Prophet(**self.params)
+        self.logger = logging.getLogger(__name__)
 
-    def train(self, X: pd.DataFrame, y: pd.Series) -> None:
-        """Train Prophet model"""
+    def train(self, X: pd.DataFrame, y: pd.Series):
+        """
+        Trains the Prophet model.
+
+        Args:
+            X (pd.DataFrame): Feature DataFrame with a datetime index.
+            y (pd.Series): Target variable.
+        """
         try:
-            # Format dates properly for Prophet
-            df = pd.DataFrame({
-                'ds': pd.to_datetime(X.index),
-                'y': y.values
-            })
-
-            self.model = Prophet(**self.params)
-            self.model.fit(df)
+            self.logger.info("Training Prophet model...")
+            df = X.copy()
+            df['y'] = y
+            df.reset_index(inplace=True)
+            df.rename(columns={'timestamp': 'ds'}, inplace=True)
+            self.model.fit(df[['ds', 'y']])
+            self.logger.info("Prophet model training completed.")
         except Exception as e:
             self.logger.error(f"Error training Prophet: {e}")
+            self.model = None
 
-    def predict(self, X: pd.DataFrame) -> np.ndarray:
-        """Make predictions with Prophet"""
+    def predict(self, X: pd.DataFrame) -> pd.Series:
+        """
+        Generates forecasts using the trained Prophet model.
+
+        Args:
+            X (pd.DataFrame): Future dates for forecasting.
+
+        Returns:
+            pd.Series: Forecasted values.
+        """
         try:
             if self.model is None:
-                return np.zeros(len(X))
+                self.logger.warning("Prophet model is not trained. Returning zeros.")
+                return pd.Series([0.0] * len(X))
 
-            future = pd.DataFrame({'ds': pd.to_datetime(X.index)})
-            forecast = self.model.predict(future)
-            return (forecast['yhat'] > 0.5).astype(int).values
+            future = X.copy().reset_index()
+            future.rename(columns={'timestamp': 'ds'}, inplace=True)
+            forecast = self.model.predict(future[['ds']])
+            return forecast['yhat']
         except Exception as e:
             self.logger.error(f"Error making Prophet predictions: {e}")
-            return np.array([])
+            return pd.Series([0.0] * len(X))
+
+    def get_feature_importance(self) -> Dict[str, float]:
+        """
+        Retrieves feature importance scores. (Not applicable for Prophet)
+
+        Returns:
+            Dict[str, float]: Empty dictionary as Prophet does not provide feature importances.
+        """
+        return {}
