@@ -1,62 +1,66 @@
-import numpy as np
 import pandas as pd
-from typing import List, Dict
+import numpy as np
+from typing import List
 import logging
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.feature_selection import SelectKBest, mutual_info_classif
-from sklearn.exceptions import NotFittedError
+from sklearn.feature_selection import mutual_info_classif
 
+class FeatureSelector:
+    """
+    Selects the most relevant features based on mutual information.
+    """
 
-class FeatureSelector(BaseEstimator, TransformerMixin):
-    def __init__(self, method: str = 'mutual_info', k: int = 'all'):
-        self.method = method
-        self.k = k
-        self.selector = None
-        self.selected_features: List[str] = []
-        self.feature_importance: Dict[str, float] = {}
+    def __init__(self, n_features: int = 50):
         self.logger = logging.getLogger(__name__)
+        self.n_features = n_features
+        self.selected_features: List[str] = []
 
     def fit(self, X: pd.DataFrame, y: pd.Series):
+        """
+        Fits the feature selector to the data.
+        
+        Args:
+            X (pd.DataFrame): Feature DataFrame.
+            y (pd.Series): Target labels.
+        """
         try:
-            if self.method == 'mutual_info':
-                score_func = mutual_info_classif
-            else:
-                raise ValueError(f"Unknown selection method: {self.method}")
-
-            self.selector = SelectKBest(score_func=score_func, k=self.k)
-            self.selector.fit(X, y)
-
-            scores = self.selector.scores_
-            self.feature_importance = dict(zip(X.columns, scores))
-            mean_score = np.mean(scores)
-            mask = scores > mean_score
-
-            self.selected_features = X.columns[mask].tolist()
-
-            # Pastikan kolom 'returns' jika ada, tetap dipertahankan
-            if 'returns' in X.columns and 'returns' not in self.selected_features:
-                self.selected_features.append('returns')
-
-            # Buang duplikasi
-            self.selected_features = list(dict.fromkeys(self.selected_features))
+            self.logger.info("Fitting feature selector using mutual information...")
+            mi = mutual_info_classif(X, y, discrete_features=False, random_state=42)
+            mi_series = pd.Series(mi, index=X.columns)
+            mi_series = mi_series.sort_values(ascending=False)
+            self.selected_features = mi_series.head(self.n_features).index.tolist()
             self.logger.info(f"Selected features: {self.selected_features}")
-            return self
         except Exception as e:
-            self.logger.error(f"Error in fitting feature selector: {e}")
-            raise e
+            self.logger.error(f"Error fitting feature selector: {e}")
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        """
+        Transforms the data by selecting the top features.
+        
+        Args:
+            X (pd.DataFrame): Feature DataFrame.
+        
+        Returns:
+            pd.DataFrame: Transformed DataFrame with selected features.
+        """
         try:
-            if self.selector is None:
-                raise NotFittedError("FeatureSelector instance is not fitted yet.")
-            needed = [f for f in self.selected_features if f in X.columns]
-            return X[needed]
+            if not self.selected_features:
+                self.logger.warning("No features selected. Returning original DataFrame.")
+                return X
+            return X[self.selected_features]
         except Exception as e:
-            self.logger.error(f"Error in transforming data: {e}")
-            raise e
+            self.logger.error(f"Error transforming features: {e}")
+            return X
 
-    def get_feature_importance(self) -> Dict[str, float]:
-        return self.feature_importance
-
-    def get_selected_features(self) -> List[str]:
-        return self.selected_features
+    def fit_transform(self, X: pd.DataFrame, y: pd.Series) -> pd.DataFrame:
+        """
+        Fits the feature selector and transforms the data.
+        
+        Args:
+            X (pd.DataFrame): Feature DataFrame.
+            y (pd.Series): Target labels.
+        
+        Returns:
+            pd.DataFrame: Transformed DataFrame with selected features.
+        """
+        self.fit(X, y)
+        return self.transform(X)

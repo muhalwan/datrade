@@ -6,6 +6,7 @@ import pandas as pd
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 import logging
+import os
 
 class TradingVisualizer:
     """Advanced trading visualization system"""
@@ -42,13 +43,13 @@ class TradingVisualizer:
             strategy_returns = returns * y_pred[:-1]  # Align lengths
 
             # 1. Equity Curve
-            figures['equity'] = self._plot_equity_curve(returns, strategy_returns, features.index[1:])
+            figures['equity'] = self._plot_equity_curve(returns, strategy_returns, features.index)
 
             # 2. Feature Importance
             figures['features'] = self._plot_feature_importance(features, returns)
 
             # 3. Rolling Metrics
-            figures['metrics'] = self._plot_rolling_metrics(strategy_returns, features.index[1:])
+            figures['metrics'] = self._plot_rolling_metrics(strategy_returns, features.index)
 
             # 4. Trade Analysis
             figures['trades'] = self._plot_trade_analysis(
@@ -56,7 +57,7 @@ class TradingVisualizer:
             )
 
             # 5. Risk Analysis
-            figures['risk'] = self._plot_risk_analysis(returns, strategy_returns, features.index[1:])
+            figures['risk'] = self._plot_risk_analysis(returns, strategy_returns, features.index)
 
             return figures
 
@@ -346,7 +347,7 @@ class TradingVisualizer:
             vars = [np.percentile(strategy_returns, (1-p)*100) for p in var_levels]
             fig.add_trace(
                 go.Bar(
-                    x=[f"{p*100}% VaR" for p in var_levels],
+                    x=[f"{int(p*100)}% VaR" for p in var_levels],
                     y=[-v for v in vars],
                     name='Value at Risk',
                     marker_color=self.color_scheme['primary']
@@ -423,19 +424,22 @@ class TradingVisualizer:
     ) -> None:
         """Save interactive HTML report"""
         try:
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
             with open(output_path, 'w') as f:
                 f.write("<html><head>")
                 f.write("<title>Trading Strategy Analysis</title>")
                 f.write("<style>")
                 f.write("body { font-family: Arial, sans-serif; margin: 20px; }")
-                f.write(".metric { display: inline-block; margin: 10px; padding: 10px; border: 1px solid #ddd; }")
+                f.write(".metric { display: inline-block; margin: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }")
                 f.write("</style>")
                 f.write("</head><body>")
 
                 # Add metrics summary
                 f.write("<h2>Performance Metrics</h2>")
+                f.write("<div>")
                 for name, value in metrics.items():
-                    f.write(f'<div class="metric"><b>{name}:</b> {value:.4f}</div>')
+                    f.write(f'<div class="metric"><b>{name.replace("_", " ").title()}:</b> {value:.4f}</div>')
+                f.write("</div>")
 
                 # Add figures
                 for name, fig in figures.items():
@@ -444,5 +448,6 @@ class TradingVisualizer:
 
                 f.write("</body></html>")
 
+            self.logger.info(f"HTML report saved to {output_path}")
         except Exception as e:
             self.logger.error(f"Error saving HTML report: {e}")

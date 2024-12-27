@@ -1,210 +1,190 @@
-from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
+from typing import Optional, Dict, List, Tuple
 import logging
-from sklearn.model_selection import TimeSeriesSplit
-from sklearn.preprocessing import StandardScaler
 
-from .base import BaseModel
 from .lstm import LSTMModel
 from .xgboost_model import XGBoostModel
-from ..features.selector import FeatureSelector
 
+class EnsembleModel:
+    """
+    Combines multiple models (LSTM and XGBoost) into an enhanced ensemble.
+    """
 
-class EnhancedEnsemble(BaseModel):
-    def __init__(self, config: Optional[Dict] = None):
-        super().__init__("enhanced_ensemble")
-
-        self.config = config or {
-            'lstm': {
-                'sequence_length': 30,
-                'lstm_units': [32, 16],
-                'dropout_rate': 0.3,
-                'recurrent_dropout': 0.3,
-                'learning_rate': 0.001
-            },
-            'xgboost': {
-                'objective': 'binary:logistic',
-                'eval_metric': 'logloss',
-                'max_depth': 4,
-                'learning_rate': 0.05,
-                'subsample': 0.8,
-                'colsample_bytree': 0.8,
-                'min_child_weight': 3,
-                'gamma': 0.1,
-                'reg_alpha': 0.1,
-                'reg_lambda': 1.0,
-                'scale_pos_weight': 1.0
-            }
-        }
-
-        self.models = {
+    def __init__(self, config: Dict):
+        self.logger = logging.getLogger(__name__)
+        self.config = config
+        self.models: Dict[str, BaseModel] = {
             'lstm': LSTMModel(**self.config['lstm']),
             'xgboost': XGBoostModel(params=self.config['xgboost'])
         }
-
-        self.feature_selector = FeatureSelector(method='mutual_info', k='all')
-        self.scaler = StandardScaler()
-        self.weights = {'lstm': 0.4, 'xgboost': 0.6}
-
-        self.logger = logging.getLogger(__name__)
-        self.trained_ = False
-
+        self.feature_selector = None
+        self.scaler = None
 
     def train(self, X: pd.DataFrame, y: pd.Series):
         """
-        Train ensemble model pada full dataset.
+        Trains the ensemble model using time-series cross-validation.
+
+        Args:
+            X (pd.DataFrame): Feature DataFrame.
+            y (pd.Series): Target labels.
         """
         try:
             self.logger.info("Starting ensemble training...")
+            # Feature selection and scaling
+            self.logger.info("Fitting scaler and feature selector on training data...")
+            self.scaler = StandardScaler()
+            X_scaled = self.scaler.fit_transform(X)
 
-            # 1) Feature Selection
-            self.feature_selector.fit(X, y)
-            X_selected = self.feature_selector.transform(X)
+            self.feature_selector = FeatureSelector(n_features=self.config['feature_selector']['n_features'])
+            X_selected = self.feature_selector.fit_transform(pd.DataFrame(X_scaled, index=X.index, columns=X.columns), y)
 
-            # Hapus kolom duplikat jika ada
-            if len(X_selected.columns) != len(set(X_selected.columns)):
-                self.logger.warning("Duplicate feature names found. Dropping duplicates.")
-                X_selected = X_selected.loc[:, ~X_selected.columns.duplicated()].copy()
+            # Time-series cross-validation
+            self._time_series_cv(X_selected.values, y.values)
 
-            # 2) Scaling
-            self.scaler.fit(X_selected)
-            X_scaled_array = self.scaler.transform(X_selected)
-            X_scaled = pd.DataFrame(X_scaled_array, columns=X_selected.columns, index=X_selected.index)
-
-            # 3) (Opsional) TimeSeries Cross-Validation untuk menilai kinerja
-            self._time_series_cv(X_scaled, y)
-
-            # 4) Final train sub-model pada full dataset
-            X_seq, y_seq = self._make_lstm_sequence(X_scaled, y)
-            self.logger.info("Training LSTM on full data...")
-            self.models['lstm'].train(X_seq, y_seq)
-
+            # Train on full data
             self.logger.info("Training XGBoost on full data...")
-            self.models['xgboost'].train(X_scaled, y)
+            self.models['xgboost'].train(pd.DataFrame(X_selected, columns=self.feature_selector.selected_features), y)
 
-            self.trained_ = True
+            self.logger.info("Training LSTM on full data...")
+            self._train_lstm_full_data(X_selected.values, y.values)
+
             self.logger.info("Ensemble training completed")
-
-            return self
-
         except Exception as e:
             self.logger.error(f"Error in ensemble training: {e}")
-            raise
 
-    def _time_series_cv(self, X: pd.DataFrame, y: pd.Series, n_splits: int = 5):
-        self.logger.info("Performing optional time-series cross-validation...")
+    def _time_series_cv(self, X: np.ndarray, y: np.ndarray):
+        """
+        Performs optional time-series cross-validation.
 
-        tscv = TimeSeriesSplit(n_splits=n_splits)
-        for fold, (train_idx, val_idx) in enumerate(tscv.split(X)):
-            X_train_cv = X.iloc[train_idx]
-            y_train_cv = y.iloc[train_idx]
-            X_val_cv = X.iloc[val_idx]
-            y_val_cv = y.iloc[val_idx]
-
-            # LSTM
-            X_train_seq, y_train_seq = self._make_lstm_sequence(X_train_cv, y_train_cv)
-            X_val_seq, y_val_seq = self._make_lstm_sequence(X_val_cv, y_val_cv)
-            if len(X_train_seq) == 0 or len(X_val_seq) == 0:
-                self.logger.warning(f"Skipping fold {fold} due to insufficient data for LSTM.")
-                continue
-            # Train + predict (sementara)
-            temp_lstm = LSTMModel(**self.config['lstm'])
-            temp_lstm.train(X_train_seq, y_train_seq)
-            val_pred_lstm = temp_lstm.predict(X_val_seq)
-
-            # XGBoost
-            # Perlu model XGBoost sementara
-            temp_xgb = XGBoostModel(params=self.config['xgboost'])
-            # Pastikan tidak ada duplikat
-            if len(X_train_cv.columns) != len(set(X_train_cv.columns)):
-                X_train_cv = X_train_cv.loc[:, ~X_train_cv.columns.duplicated()].copy()
-            if len(X_val_cv.columns) != len(set(X_val_cv.columns)):
-                X_val_cv = X_val_cv.loc[:, ~X_val_cv.columns.duplicated()].copy()
-
-            temp_xgb.train(X_train_cv, y_train_cv)
-            val_pred_xgb = temp_xgb.predict(X_val_cv)
-
-
-        self.logger.info("Time-series CV done.")
-
-    # -------------------------------------------------------------------------
-    # Bagian Prediksi
-    # -------------------------------------------------------------------------
-    def predict(self, X: pd.DataFrame) -> np.ndarray:
-        if not self.trained_:
-            self.logger.warning("Ensemble model has not been trained. Returning zeros.")
-            return np.zeros(len(X))
-
+        Args:
+            X (np.ndarray): Scaled and selected features.
+            y (np.ndarray): Target labels.
+        """
         try:
-            # 1) Transform fitur
-            X_sel = self.feature_selector.transform(X)
+            n_splits = self.config['cross_validation']['n_splits']
+            self.logger.info(f"Performing time-series cross-validation with {n_splits} splits...")
+            split_size = int(len(X) / n_splits)
 
-            # Pastikan tidak ada kolom duplikat
-            if len(X_sel.columns) != len(set(X_sel.columns)):
-                X_sel = X_sel.loc[:, ~X_sel.columns.duplicated()].copy()
+            for i in range(n_splits):
+                self.logger.info(f"Processing split {i+1}/{n_splits}")
+                X_train_cv = X[:(i+1)*split_size]
+                y_train_cv = y[:(i+1)*split_size]
+                X_val_cv = X[(i+1)*split_size:(i+2)*split_size]
+                y_val_cv = y[(i+1)*split_size:(i+2)*split_size]
 
-            X_scl_array = self.scaler.transform(X_sel)
-            X_scl = pd.DataFrame(X_scl_array, columns=X_sel.columns, index=X_sel.index)
+                # Train XGBoost on CV split
+                temp_xgb = XGBoostModel(params=self.config['xgboost'])
+                temp_xgb.train(pd.DataFrame(X_train_cv, columns=self.feature_selector.selected_features), y_train_cv)
+                val_pred_xgb = temp_xgb.predict(pd.DataFrame(X_val_cv, columns=self.feature_selector.selected_features))
 
-            # 2) Prediksi sub-model
-            # LSTM
-            pred_lstm = self._predict_lstm(X_scl)
+                # Train LSTM on CV split
+                temp_lstm = LSTMModel(**self.config['lstm'])
+                X_train_seq, y_train_seq = self._make_lstm_sequence(X_train_cv, y_train_cv)
+                temp_lstm.train(X_train_seq, y_train_seq)
+                val_pred_lstm = temp_lstm.predict(X_val_seq)
 
-            # XGBoost
-            pred_xgb = self._predict_xgb(X_scl)
-
-            # 3) Kalkulasi weighting
-            if pred_lstm is None and pred_xgb is None:
-                return np.zeros(len(X_scl))
-            elif pred_lstm is None:
-                return pred_xgb
-            elif pred_xgb is None:
-                return pred_lstm
-            else:
-                ensemble_pred = pred_lstm * self.weights['lstm'] + pred_xgb * self.weights['xgboost']
-                # Biner threshold 0.5
-                return (ensemble_pred > 0.5).astype(int)
-
+            self.logger.info("Time-series CV done.")
         except Exception as e:
-            self.logger.error(f"Error in ensemble prediction: {e}")
+            self.logger.error(f"Error during time-series cross-validation: {e}")
+
+    def _train_lstm_full_data(self, X: np.ndarray, y: np.ndarray):
+        """
+        Trains the LSTM model on the full dataset.
+
+        Args:
+            X (np.ndarray): Scaled and selected features.
+            y (np.ndarray): Target labels.
+        """
+        try:
+            self.logger.info("Preparing sequences for LSTM training...")
+            X_seq, y_seq = self._make_lstm_sequence(X, y)
+            self.models['lstm'].train(X_seq, y_seq)
+        except Exception as e:
+            self.logger.error(f"Error training LSTM on full data: {e}")
+
+    def _make_lstm_sequence(self, X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Creates sequences for LSTM training.
+
+        Args:
+            X (np.ndarray): Feature array.
+            y (np.ndarray): Target array.
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: Sequences and corresponding targets.
+        """
+        seq_len = self.models['lstm'].sequence_length
+        X_seq = []
+        y_seq = []
+        for i in range(len(X) - seq_len):
+            X_seq.append(X[i:i+seq_len])
+            y_seq.append(y[i+seq_len])
+        return np.array(X_seq), np.array(y_seq)
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        """
+        Generates ensemble predictions by combining LSTM and XGBoost predictions.
+
+        Args:
+            X (pd.DataFrame): Feature DataFrame.
+
+        Returns:
+            np.ndarray: Binary ensemble predictions.
+        """
+        try:
+            X_scaled = self.scaler.transform(X)
+            X_selected = self.feature_selector.transform(pd.DataFrame(X_scaled, index=X.index, columns=X.columns))
+
+            # LSTM Predictions
+            lstm_preds = self.models['lstm'].predict(X_selected.values)
+
+            # XGBoost Predictions
+            xgb_preds = self.models['xgboost'].predict(pd.DataFrame(X_selected, columns=self.feature_selector.selected_features))
+
+            # Ensemble: Weighted average
+            weights = self.config['ensemble']['weights']
+            ensemble_pred = lstm_preds * weights.get('lstm', 0.5) + xgb_preds * weights.get('xgboost', 0.5)
+
+            # Binary threshold
+            binary_pred = (ensemble_pred > 0.5).astype(int)
+            return binary_pred
+        except Exception as e:
+            self.logger.error(f"Error making ensemble predictions: {e}")
             return np.zeros(len(X))
 
-    def _predict_lstm(self, X_scl: pd.DataFrame) -> Optional[np.ndarray]:
-        if self.models['lstm'].model is None:
-            self.logger.warning("LSTM model not trained.")
-            return None
+    def save(self, path: str):
+        """
+        Saves the ensemble model components.
 
-        seq_length = self.config['lstm']['sequence_length']
-        X_arr = X_scl.values
-        sequences = []
-        for i in range(len(X_arr) - seq_length):
-            sequences.append(X_arr[i : i + seq_length])
+        Args:
+            path (str): Base file path to save the models.
+        """
+        try:
+            for model_name, model in self.models.items():
+                model.save(f"{path}_{model_name}.model")
+            self.logger.info("Ensemble model saved successfully.")
+        except Exception as e:
+            self.logger.error(f"Error saving ensemble model: {e}")
 
-        if not sequences:
-            self.logger.warning("No enough data for LSTM sequences in predict().")
-            return None
+    def get_feature_importance(self) -> Dict[str, float]:
+        """
+        Aggregates feature importance from all models.
 
-        X_seq = np.array(sequences)
-        pred_seq = self.models['lstm'].predict(X_seq)  # float [0..1]
-        # Selaraskan panjang
-        pred_full = np.zeros(len(X_scl))
-        pred_full[seq_length:] = pred_seq
-        return pred_full
-
-    def _predict_xgb(self, X_scl: pd.DataFrame) -> Optional[np.ndarray]:
-        if self.models['xgboost'].model is None:
-            self.logger.warning("XGBoost model not trained.")
-            return None
-        pred = self.models['xgboost'].predict(X_scl)  # biner 0/1
-        return pred
-
-    def _make_lstm_sequence(self, X: pd.DataFrame, y: pd.Series) -> Tuple[np.ndarray, np.ndarray]:
-        seq_len = self.config['lstm']['sequence_length']
-        X_arr = X.values
-        sequences = []
-        targets = []
-        for i in range(len(X_arr) - seq_len):
-            sequences.append(X_arr[i : i + seq_len])
-            targets.append(y.iloc[i + seq_len])
-        return np.array(sequences), np.array(targets)
+        Returns:
+            Dict[str, float]: Aggregated feature importances.
+        """
+        try:
+            importance = {}
+            for model_name, model in self.models.items():
+                fi = model.get_feature_importance()
+                for feature, score in fi.items():
+                    importance[feature] = importance.get(feature, 0) + score
+            # Normalize importance
+            total = sum(importance.values())
+            for feature in importance:
+                importance[feature] /= total
+            return importance
+        except Exception as e:
+            self.logger.error(f"Error aggregating feature importance: {e}")
+            return {}
