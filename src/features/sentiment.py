@@ -1,5 +1,3 @@
-# src/features/sentiment.py
-
 import pandas as pd
 import numpy as np
 import logging
@@ -18,12 +16,13 @@ class MarketSentiment:
     confidence: float
 
 class SentimentAnalyzer:
-    """Advanced market sentiment analysis"""
+    """Advanced market sentiment analysis."""
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.sentiment_window = 20
         self.lookback_periods = 50
+        self.logger.setLevel(logging.INFO)
 
     def calculate_market_sentiment(
             self,
@@ -31,7 +30,7 @@ class SentimentAnalyzer:
             orderbook_data: Optional[pd.DataFrame] = None,
             news_data: Optional[List[Dict]] = None
     ) -> pd.DataFrame:
-        """Calculate comprehensive market sentiment"""
+        """Calculate comprehensive market sentiment."""
         try:
             sentiment_df = pd.DataFrame(index=price_data.index)
 
@@ -44,7 +43,7 @@ class SentimentAnalyzer:
                 sentiment_df = self._calculate_volume_sentiment(price_data, sentiment_df)
 
             # Order book sentiment
-            if orderbook_data is not None:
+            if orderbook_data is not None and not orderbook_data.empty:
                 sentiment_df = self._calculate_orderbook_sentiment(orderbook_data, sentiment_df)
 
             # News sentiment
@@ -61,6 +60,9 @@ class SentimentAnalyzer:
             # Add confidence scores
             sentiment_df['confidence'] = self._calculate_confidence_scores(sentiment_df)
 
+            # Fill any remaining NaN values
+            sentiment_df.fillna(0, inplace=True)
+
             return sentiment_df
 
         except Exception as e:
@@ -68,7 +70,7 @@ class SentimentAnalyzer:
             return pd.DataFrame()
 
     def _calculate_price_sentiment(self, price_data: pd.DataFrame, sentiment_df: pd.DataFrame) -> pd.DataFrame:
-        """Calculate price-based sentiment indicators"""
+        """Calculate price-based sentiment indicators."""
         try:
             # Price momentum sentiment
             returns = price_data['close'].pct_change()
@@ -76,7 +78,7 @@ class SentimentAnalyzer:
 
             # Price trend strength
             for window in [5, 10, 20]:
-                ema = price_data['close'].ewm(span=window).mean()
+                ema = price_data['close'].ewm(span=window, adjust=False).mean()
                 sentiment_df[f'trend_strength_{window}'] = (price_data['close'] - ema) / ema
 
             # Price action sentiment
@@ -98,7 +100,9 @@ class SentimentAnalyzer:
                 resistance = price_data['high'].rolling(window=window).max()
                 mid_point = (support + resistance) / 2
 
-                sentiment_df[f'sr_position_{window}'] = (price_data['close'] - mid_point) / (resistance - support)
+                # Prevent division by zero
+                denominator = (resistance - support).replace(0, np.nan)
+                sentiment_df[f'sr_position_{window}'] = (price_data['close'] - mid_point) / denominator
 
             return sentiment_df
 
@@ -107,20 +111,20 @@ class SentimentAnalyzer:
             return sentiment_df
 
     def _calculate_momentum_sentiment(self, price_data: pd.DataFrame, sentiment_df: pd.DataFrame) -> pd.DataFrame:
-        """Calculate momentum-based sentiment"""
+        """Calculate momentum-based sentiment."""
         try:
             # RSI sentiment
-            from ta.momentum import RSIIndicator
-            rsi = RSIIndicator(close=price_data['close']).rsi()
+            rsi = price_data['close'].rolling(window=14).apply(lambda x: self._rsi(x), raw=False)
             sentiment_df['rsi_sentiment'] = (rsi - 50) / 50  # Normalize to [-1, 1]
 
             # MACD sentiment
-            from ta.trend import MACD
-            macd = MACD(close=price_data['close'])
+            macd = price_data['close'].ewm(span=12, adjust=False).mean() - price_data['close'].ewm(span=26, adjust=False).mean()
+            macd_signal = macd.ewm(span=9, adjust=False).mean()
+            macd_diff = macd - macd_signal
             sentiment_df['macd_sentiment'] = np.where(
-                macd.macd() > macd.macd_signal(),
-                macd.macd_diff() / price_data['close'],
-                -macd.macd_diff() / price_data['close']
+                macd > macd_signal,
+                macd_diff / price_data['close'],
+                -macd_diff / price_data['close']
             )
 
             # Rate of Change sentiment
@@ -135,27 +139,19 @@ class SentimentAnalyzer:
             return sentiment_df
 
     def _calculate_volume_sentiment(self, price_data: pd.DataFrame, sentiment_df: pd.DataFrame) -> pd.DataFrame:
-        """Calculate volume-based sentiment"""
+        """Calculate volume-based sentiment."""
         try:
             # Volume trend
             volume_sma = price_data['volume'].rolling(window=20).mean()
             sentiment_df['volume_trend'] = (price_data['volume'] - volume_sma) / volume_sma
 
-            # Volume Force Index
+            # Force Index
             sentiment_df['force_index'] = price_data['close'].diff() * price_data['volume']
-            sentiment_df['force_index'] = sentiment_df['force_index'].ewm(span=13).mean()
+            sentiment_df['force_index'] = sentiment_df['force_index'].ewm(span=13, adjust=False).mean()
 
-            # Volume Price Trend
-            close_change = price_data['close'].diff()
-            sentiment_df['vpt'] = np.where(
-                close_change > 0,
-                price_data['volume'],
-                np.where(
-                    close_change < 0,
-                    -price_data['volume'],
-                    0
-                )
-            ).cumsum()
+            # Volume Price Trend (VPT)
+            price_change = price_data['close'].diff()
+            sentiment_df['vpt'] = (price_change * price_data['volume']).cumsum()
 
             return sentiment_df
 
@@ -164,25 +160,33 @@ class SentimentAnalyzer:
             return sentiment_df
 
     def _calculate_orderbook_sentiment(self, orderbook_data: pd.DataFrame, sentiment_df: pd.DataFrame) -> pd.DataFrame:
-        """Calculate order book sentiment"""
+        """Calculate order book sentiment."""
         try:
-            # Group by timestamp
-            grouped = orderbook_data.groupby(['timestamp', 'side'])['quantity'].sum().unstack()
+            # Ensure orderbook_data has required columns
+            required_columns = ['timestamp', 'side', 'price', 'quantity']
+            if not all(col in orderbook_data.columns for col in required_columns):
+                missing = [col for col in required_columns if col not in orderbook_data.columns]
+                self.logger.error(f"Missing required orderbook columns: {missing}")
+                return sentiment_df
 
-            if 'bid' in grouped and 'ask' in grouped:
-                # Calculate bid-ask imbalance
-                sentiment_df['orderbook_imbalance'] = (
-                        (grouped['bid'] - grouped['ask']) /
-                        (grouped['bid'] + grouped['ask'])
-                )
+            # Group by timestamp and side
+            grouped = orderbook_data.groupby(['timestamp', 'side'])['quantity'].sum().unstack(fill_value=0)
+
+            if 'bid' in grouped.columns and 'ask' in grouped.columns:
+                # Calculate order book imbalance
+                denominator = (grouped['bid'] + grouped['ask']).replace(0, np.nan)
+                sentiment_df['orderbook_imbalance'] = (grouped['bid'] - grouped['ask']) / denominator
 
                 # Calculate spread
-                bid_prices = orderbook_data[orderbook_data['side'] == 'bid']['price'].max()
-                ask_prices = orderbook_data[orderbook_data['side'] == 'ask']['price'].min()
-                sentiment_df['spread'] = (ask_prices - bid_prices) / bid_prices
+                bid_prices = orderbook_data[orderbook_data['side'] == 'bid'].groupby('timestamp')['price'].max()
+                ask_prices = orderbook_data[orderbook_data['side'] == 'ask'].groupby('timestamp')['price'].min()
+                spread = (ask_prices - bid_prices) / bid_prices
+                sentiment_df['spread'] = spread
 
                 # Calculate order book depth
-                sentiment_df['depth_ratio'] = grouped['bid'].rolling(window=20).mean() / grouped['ask'].rolling(window=20).mean()
+                bid_volume_sma = grouped['bid'].rolling(window=20).mean()
+                ask_volume_sma = grouped['ask'].rolling(window=20).mean()
+                sentiment_df['depth_ratio'] = bid_volume_sma / ask_volume_sma.replace(0, np.nan)
 
             return sentiment_df
 
@@ -191,7 +195,7 @@ class SentimentAnalyzer:
             return sentiment_df
 
     def _add_news_sentiment(self, news_data: List[Dict], sentiment_df: pd.DataFrame) -> pd.DataFrame:
-        """Add news sentiment analysis"""
+        """Add news sentiment analysis."""
         try:
             # Process news data
             news_sentiments = []
@@ -207,7 +211,7 @@ class SentimentAnalyzer:
             news_df = pd.DataFrame(news_sentiments)
             news_df.set_index('timestamp', inplace=True)
 
-            # Resample to match price data frequency
+            # Resample to match price data frequency (assuming 1-minute intervals)
             resampled_sentiment = news_df['sentiment'].resample('1min').mean()
             resampled_subjectivity = news_df['subjectivity'].resample('1min').mean()
 
@@ -215,7 +219,7 @@ class SentimentAnalyzer:
             sentiment_df['news_sentiment'] = resampled_sentiment
             sentiment_df['news_subjectivity'] = resampled_subjectivity
 
-            sentiment_df.fillna(method='ffill', inplace=True)
+            sentiment_df[['news_sentiment', 'news_subjectivity']] = sentiment_df[['news_sentiment', 'news_subjectivity']].fillna(method='ffill').fillna(0)
 
             return sentiment_df
 
@@ -224,7 +228,7 @@ class SentimentAnalyzer:
             return sentiment_df
 
     def _analyze_news_text(self, text: str) -> Dict[str, float]:
-        """Analyze sentiment of news text"""
+        """Analyze sentiment of news text."""
         try:
             blob = TextBlob(text)
             return {
@@ -236,7 +240,7 @@ class SentimentAnalyzer:
             return {'polarity': 0.0, 'subjectivity': 0.5}
 
     def _calculate_composite_sentiment(self, sentiment_df: pd.DataFrame) -> pd.Series:
-        """Calculate weighted composite sentiment"""
+        """Calculate weighted composite sentiment."""
         try:
             weights = {
                 'price_momentum': 0.3,
@@ -259,7 +263,7 @@ class SentimentAnalyzer:
             return pd.Series(0, index=sentiment_df.index)
 
     def _calculate_confidence_scores(self, sentiment_df: pd.DataFrame) -> pd.Series:
-        """Calculate confidence scores for sentiment signals"""
+        """Calculate confidence scores for sentiment signals."""
         try:
             # Calculate signal strength
             signal_strength = abs(sentiment_df['composite_sentiment'])
@@ -290,7 +294,7 @@ class SentimentAnalyzer:
             return pd.Series(0.5, index=sentiment_df.index)
 
     def _normalize_feature(self, series: pd.Series) -> pd.Series:
-        """Normalize feature to [-1, 1] range"""
+        """Normalize feature to [-1, 1] range."""
         try:
             if series.empty or series.isna().all():
                 return series
@@ -300,10 +304,28 @@ class SentimentAnalyzer:
 
             # Avoid division by zero
             range_val = max_val - min_val
-            range_val = np.where(range_val == 0, 1, range_val)
+            range_val = pd.Series(np.where(range_val == 0, 1, range_val), index=series.index)
 
-            return 2 * (series - min_val) / range_val - 1
+            normalized = 2 * (series - min_val) / range_val - 1
+            normalized = pd.Series(normalized, index=series.index)
+
+            return normalized
 
         except Exception as e:
             self.logger.error(f"Error normalizing feature: {e}")
             return series
+
+    def _rsi(self, series: pd.Series) -> float:
+        """Calculate RSI for a series."""
+        try:
+            delta = series.diff()
+            up = delta.clip(lower=0)
+            down = -1 * delta.clip(upper=0)
+            roll_up = up.rolling(window=14).mean()
+            roll_down = down.rolling(window=14).mean()
+            rs = roll_up / roll_down
+            rsi = 100.0 - (100.0 / (1.0 + rs))
+            return rsi.iloc[-1]
+        except Exception as e:
+            self.logger.error(f"Error calculating RSI: {e}")
+            return 50.0

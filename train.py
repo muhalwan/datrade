@@ -1,14 +1,22 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
+from sklearn.exceptions import NotFittedError
 import logging
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple
 from keras.callbacks import ModelCheckpoint
 import talib
+
+# **1. Disable CUDA/GPU usage before any TensorFlow/Keras imports**
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
+# **Ensure that TensorFlow/Keras imports come after setting CUDA_VISIBLE_DEVICES**
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense
+from sklearn.preprocessing import StandardScaler
 
 from src.data.database.connection import MongoDBConnection
 from src.features.processor import FeatureProcessor
@@ -22,24 +30,17 @@ class ModelTrainer:
     def __init__(self):
         self.logger = self._setup_logging()
         self.feature_processor = FeatureProcessor()
-        self.feature_selector = FeatureSelector()
         self.visualizer = TradingVisualizer()
-        self.scaler = None
+
+        # Initialize the ensemble model
+        self.ensemble_model = EnhancedEnsemble()
 
         # Create necessary directories
         for dir_name in ['logs', 'models/trained', 'models/figures']:
             Path(dir_name).mkdir(parents=True, exist_ok=True)
 
-        self.checkpoint = ModelCheckpoint(
-            filepath='models/trained/best_model.weights.h5',
-            save_weights_only=True,
-            save_best_only=True,
-            monitor='val_loss',
-            mode='min'
-        )
-
     def _setup_logging(self) -> logging.Logger:
-        """Setup logging configuration"""
+        """Setup logging configuration."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_file = Path("logs") / f"training_{timestamp}.log"
 
@@ -100,7 +101,7 @@ class ModelTrainer:
             end_date: datetime,
             batch_size: timedelta = timedelta(days=7)
     ) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
-        """Load and prepare training data in batches"""
+        """Load and prepare training data in batches."""
         try:
             self.logger.info(f"Loading data from {start_date} to {end_date}")
 
@@ -142,7 +143,7 @@ class ModelTrainer:
             return None, None
 
     def _convert_to_ohlcv(self, trades_df: pd.DataFrame, timeframe: str = '5min') -> pd.DataFrame:
-        """Convert trade data to OHLCV format"""
+        """Convert trade data to OHLCV format."""
         try:
             if 'trade_time' in trades_df.columns:
                 trades_df['timestamp'] = pd.to_datetime(trades_df['trade_time'])
@@ -173,128 +174,90 @@ class ModelTrainer:
             self.logger.error(f"Error converting to OHLCV: {e}")
             return pd.DataFrame()
 
-    def calculate_technical_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Calculate technical indicators using TA-Lib"""
-        try:
-            features = pd.DataFrame(index=df.index)
-
-            # Moving averages
-            features['sma_5'] = talib.SMA(df['close'].values, timeperiod=5)
-            features['sma_10'] = talib.SMA(df['close'].values, timeperiod=10)
-            features['sma_20'] = talib.SMA(df['close'].values, timeperiod=20)
-
-            # Volume indicators
-            features['obv'] = talib.OBV(df['close'].values, df['volume'].values)
-            features['ad'] = talib.AD(df['high'].values, df['low'].values,
-                                      df['close'].values, df['volume'].values)
-
-            # Momentum indicators
-            features['rsi'] = talib.RSI(df['close'].values, timeperiod=14)
-            macd, macd_signal, macd_hist = talib.MACD(df['close'].values)
-            features['macd'] = macd
-            features['macd_signal'] = macd_signal
-            features['macd_hist'] = macd_hist
-
-            # Volatility indicators
-            features['atr'] = talib.ATR(df['high'].values, df['low'].values,
-                                        df['close'].values, timeperiod=14)
-            features['bbands_upper'], features['bbands_middle'], features['bbands_lower'] = \
-                talib.BBANDS(df['close'].values, timeperiod=20)
-
-            # Use more modern pandas methods to handle NaN values
-            features = features.ffill().bfill()
-
-            return features
-
-        except Exception as e:
-            self.logger.error(f"Error calculating technical features: {e}")
-            return pd.DataFrame()
-
-    def train_model(self, price_data, orderbook_data, symbol):
+    def train_model(self, price_data: pd.DataFrame, orderbook_data: pd.DataFrame, symbol: str):
         try:
             if price_data.empty:
                 raise ValueError("Empty price data")
 
             self.logger.info("Processing features...")
 
-            # Calculate technical features
-            tech_features = self.calculate_technical_features(price_data)
-
-            # Merge price data with technical features
-            combined_features = pd.concat([price_data, tech_features], axis=1)
-
-            # Use the feature processor with the combined features
+            # Prepare features and target
             features, target = self.feature_processor.prepare_features(
-                price_data=combined_features,
+                price_data=price_data,
                 orderbook_data=orderbook_data,
-                target_minutes=5
+                target_minutes=5,
+                include_sentiment=True
             )
 
             if features.empty or target.empty:
                 raise ValueError("Feature generation failed")
 
-            # Split data
+            # Split data before feature selection to prevent data leakage
             train_end = int(len(features) * 0.8)
-            X_train = features[:train_end]
-            y_train = target[:train_end]
-            X_test = features[train_end:]
-            y_test = target[train_end:]
+            X_train = features.iloc[:train_end].copy()
+            y_train = target.iloc[:train_end].copy()
+            X_test = features.iloc[train_end:].copy()
+            y_test = target.iloc[train_end:].copy()
 
-            # Fit scaler on training data
-            if self.scaler is None:
-                from sklearn.preprocessing import StandardScaler
-                self.scaler = StandardScaler()
-                X_train = self.scaler.fit_transform(X_train)
-                X_test = self.scaler.transform(X_test)
+            # Fit scaler and feature selector on training data
+            self.logger.info("Fitting scaler and feature selector on training data...")
+            self.ensemble_model.feature_selector.fit(X_train, y_train)
+            X_train_selected = self.ensemble_model.feature_selector.transform(X_train)
+            X_test_selected = self.ensemble_model.feature_selector.transform(X_test)
 
-            # Initialize and train model
-            model = EnhancedEnsemble(
-                config={
-                    'lstm': {
-                        'sequence_length': 30,
-                        'lstm_units': [32, 16],
-                        'dropout_rate': 0.3,
-                        'recurrent_dropout': 0.3,
-                        'learning_rate': 0.001
-                    },
-                    'xgboost': {
-                        'max_depth': 4,
-                        'learning_rate': 0.05,
-                        'subsample': 0.8,
-                        'colsample_bytree': 0.8,
-                        'min_child_weight': 3,
-                        'gamma': 0.1
-                    }
-                }
-            )
-            model.train(X_train, y_train)
+            # Scale features
+            self.ensemble_model.scaler.fit(X_train_selected)
+            X_train_scaled = self.ensemble_model.scaler.transform(X_train_selected)
+            X_test_scaled = self.ensemble_model.scaler.transform(X_test_selected)
+
+            # Convert scaled data back to DataFrame to maintain feature names
+            X_train_scaled = pd.DataFrame(X_train_scaled, columns=X_train_selected.columns, index=X_train_selected.index)
+            X_test_scaled = pd.DataFrame(X_test_scaled, columns=X_test_selected.columns, index=X_test_selected.index)
+
+            self.logger.info(f"Selected features: {self.ensemble_model.feature_selector.get_selected_features()}")
+
+            # Initialize and train EnhancedEnsemble model
+            self.logger.info("Starting ensemble training...")
+            self.ensemble_model.train(X_train_scaled, y_train)
 
             # Make predictions
-            train_predictions = model.predict(X_train)
-            test_predictions = model.predict(X_test)
+            self.logger.info("Making predictions on training data...")
+            train_predictions = self.ensemble_model.predict(X_train_scaled)
+            self.logger.info("Making predictions on testing data...")
+            test_predictions = self.ensemble_model.predict(X_test_scaled)
 
             # Calculate metrics
             train_metrics = calculate_trading_metrics(
-                y_train, train_predictions, price_data['close'][:train_end].values
+                y_true=y_train.values, y_pred=train_predictions, prices=price_data['close'].iloc[:train_end].values
             )
             test_metrics = calculate_trading_metrics(
-                y_test, test_predictions, price_data['close'][train_end:].values
+                y_true=y_test.values, y_pred=test_predictions, prices=price_data['close'].iloc[train_end:].values
             )
 
+            self.logger.info(f"Training Metrics: {train_metrics}")
+            self.logger.info(f"Testing Metrics: {test_metrics}")
+
             # Save model
-            model_path = Path("models/trained") / f"{symbol}_model.weights.h5"
-            model.save(str(model_path))
-            self.logger.info(f"Model saved to {model_path}")
+            model_path = Path("models/trained") / f"{symbol}_model"
+            save_success = self.ensemble_model.save(model_path)
+            if save_success:
+                self.logger.info(f"Model saved to {model_path}.model and {model_path}.meta")
+            else:
+                self.logger.error("Failed to save the ensemble model.")
 
-            return model, None, (train_metrics, test_metrics)
+            return self.ensemble_model, None, (train_metrics, test_metrics)
 
+        except NotFittedError as nfe:
+            self.logger.error(f"NotFittedError during training: {nfe}")
+            self.logger.exception("Detailed error:")
+            return None, None, None
         except Exception as e:
             self.logger.error(f"Error in model training: {e}")
             self.logger.exception("Detailed error:")
             return None, None, None
 
     def run_training(self, symbol: str, days: int = 60):
-        """Run complete training pipeline"""
+        """Run complete training pipeline."""
         self.logger.info("Starting model training...")
 
         db_config = {

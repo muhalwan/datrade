@@ -19,12 +19,12 @@ class ProphetModel(BaseModel):
         }
 
     def train(self, X: pd.DataFrame, y: pd.Series) -> None:
-        """Train prophet model"""
+        """Train Prophet model"""
         try:
             # Format dates properly for Prophet
             df = pd.DataFrame({
-                'ds': pd.to_datetime(X.index).strftime('%Y-%m-%d %H:%M:%S'),
-                'y': y
+                'ds': pd.to_datetime(X.index),
+                'y': y.values
             })
 
             self.model = Prophet(**self.params)
@@ -35,9 +35,12 @@ class ProphetModel(BaseModel):
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         """Make predictions with Prophet"""
         try:
-            future = pd.DataFrame({'ds': pd.to_datetime(X.index).strftime('%Y-%m-%d %H:%M:%S')})
+            if self.model is None:
+                return np.zeros(len(X))
+
+            future = pd.DataFrame({'ds': pd.to_datetime(X.index)})
             forecast = self.model.predict(future)
-            return (forecast['yhat'] > 0).astype(int).values
+            return (forecast['yhat'] > 0.5).astype(int).values
         except Exception as e:
             self.logger.error(f"Error making Prophet predictions: {e}")
             return np.array([])
