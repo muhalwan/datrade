@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-from typing import Optional
 import logging
 
 class SentimentAnalyzer:
@@ -11,45 +10,21 @@ class SentimentAnalyzer:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
 
-    def calculate(self, orderbook_data: pd.DataFrame) -> pd.DataFrame:
-        """
-        Processes orderbook data to generate sentiment features.
-        
-        Args:
-            orderbook_data (pd.DataFrame): Orderbook snapshots.
-        
-        Returns:
-            pd.DataFrame: Sentiment features.
-        """
+    def analyze(self, orderbook_data: pd.DataFrame) -> pd.DataFrame:
         try:
-            # Resample orderbook data to match price data frequency (assuming 5-minute intervals)
-            resampled = orderbook_data.resample('5T').apply({
-                'price': ['mean', 'std'],
-                'quantity': ['sum', 'mean']
-            })
-            resampled.columns = ['price_mean', 'price_std', 'quantity_sum', 'quantity_mean']
+            self.logger.info("Analyzing orderbook data for sentiment features.")
+            sentiment_df = pd.DataFrame(index=orderbook_data.index)
 
-            # Calculate bid-ask spread as a proxy for sentiment
-            # Assuming 'side' indicates 'bid' or 'ask'
-            bids = orderbook_data[orderbook_data['side'] == 'bid'].groupby('timestamp')['price'].max()
-            asks = orderbook_data[orderbook_data['side'] == 'ask'].groupby('timestamp')['price'].min()
-            spread = (asks - bids).reindex(resampled.index, method='nearest').fillna(method='ffill').fillna(method='bfill')
-            resampled['spread'] = spread.values
-
-            # Volume imbalance
-            bid_volume = orderbook_data[orderbook_data['side'] == 'bid'].groupby('timestamp')['quantity'].sum()
-            ask_volume = orderbook_data[orderbook_data['side'] == 'ask'].groupby('timestamp')['quantity'].sum()
-            imbalance = (bid_volume - ask_volume).reindex(resampled.index, method='nearest').fillna(method='ffill').fillna(method='bfill')
-            resampled['volume_imbalance'] = imbalance.values
+            # Example sentiment features
+            sentiment_df['bid_ask_spread'] = orderbook_data['best_ask'] - orderbook_data['best_bid']
+            sentiment_df['volume_imbalance'] = orderbook_data['bid_volume'] - orderbook_data['ask_volume']
 
             # Normalize features
-            resampled['spread_norm'] = (resampled['spread'] - resampled['spread'].mean()) / resampled['spread'].std()
-            resampled['volume_imbalance_norm'] = (resampled['volume_imbalance'] - resampled['volume_imbalance'].mean()) / resampled['volume_imbalance'].std()
-
-            # Additional sentiment features can be added here
+            sentiment_df['bid_ask_spread_norm'] = (sentiment_df['bid_ask_spread'] - sentiment_df['bid_ask_spread'].mean()) / sentiment_df['bid_ask_spread'].std()
+            sentiment_df['volume_imbalance_norm'] = (sentiment_df['volume_imbalance'] - sentiment_df['volume_imbalance'].mean()) / sentiment_df['volume_imbalance'].std()
 
             self.logger.info("Sentiment features calculated successfully.")
-            return resampled[['spread_norm', 'volume_imbalance_norm']]
+            return sentiment_df
         except Exception as e:
-            self.logger.error(f"Error calculating sentiment features: {e}")
+            self.logger.error(f"Error during sentiment analysis: {e}")
             return pd.DataFrame()

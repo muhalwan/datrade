@@ -35,7 +35,7 @@ class ProphetModel(BaseModel):
             df = X.copy()
             df['y'] = y
             df.reset_index(inplace=True)
-            df.rename(columns={'timestamp': 'ds'}, inplace=True)
+            df.rename(columns={'trade_time': 'ds'}, inplace=True)
             self.model.fit(df[['ds', 'y']])
             self.logger.info("Prophet model training completed.")
         except Exception as e:
@@ -58,7 +58,7 @@ class ProphetModel(BaseModel):
                 return pd.Series([0.0] * len(X))
 
             future = X.copy().reset_index()
-            future.rename(columns={'timestamp': 'ds'}, inplace=True)
+            future.rename(columns={'trade_time': 'ds'}, inplace=True)
             forecast = self.model.predict(future[['ds']])
             return forecast['yhat']
         except Exception as e:

@@ -2,9 +2,13 @@ import numpy as np
 import pandas as pd
 from typing import Optional, Dict, List, Tuple
 import logging
+from sklearn.preprocessing import StandardScaler
 
+from .base import BaseModel
 from .lstm import LSTMModel
 from .xgboost_model import XGBoostModel
+from ..features.selector import FeatureSelector
+
 
 class EnsembleModel:
     """
@@ -16,7 +20,7 @@ class EnsembleModel:
         self.config = config
         self.models: Dict[str, BaseModel] = {
             'lstm': LSTMModel(**self.config['lstm']),
-            'xgboost': XGBoostModel(params=self.config['xgboost'])
+            'xgboost': XGBoostModel(params=self.config['xgboost']['params'])
         }
         self.feature_selector = None
         self.scaler = None
@@ -64,7 +68,7 @@ class EnsembleModel:
         try:
             n_splits = self.config['cross_validation']['n_splits']
             self.logger.info(f"Performing time-series cross-validation with {n_splits} splits...")
-            split_size = int(len(X) / n_splits)
+            split_size = int(len(X) / (n_splits + 1))
 
             for i in range(n_splits):
                 self.logger.info(f"Processing split {i+1}/{n_splits}")
@@ -74,7 +78,7 @@ class EnsembleModel:
                 y_val_cv = y[(i+1)*split_size:(i+2)*split_size]
 
                 # Train XGBoost on CV split
-                temp_xgb = XGBoostModel(params=self.config['xgboost'])
+                temp_xgb = XGBoostModel(params=self.config['xgboost']['params'])
                 temp_xgb.train(pd.DataFrame(X_train_cv, columns=self.feature_selector.selected_features), y_train_cv)
                 val_pred_xgb = temp_xgb.predict(pd.DataFrame(X_val_cv, columns=self.feature_selector.selected_features))
 
@@ -82,7 +86,11 @@ class EnsembleModel:
                 temp_lstm = LSTMModel(**self.config['lstm'])
                 X_train_seq, y_train_seq = self._make_lstm_sequence(X_train_cv, y_train_cv)
                 temp_lstm.train(X_train_seq, y_train_seq)
-                val_pred_lstm = temp_lstm.predict(X_val_seq)
+                if len(X_val_cv) < self.config['lstm']['sequence_length']:
+                    val_pred_lstm = np.zeros(len(X_val_cv))
+                else:
+                    X_val_seq, y_val_seq = self._make_lstm_sequence(X_val_cv, y_val_cv)
+                    val_pred_lstm = temp_lstm.predict(X_val_seq)
 
             self.logger.info("Time-series CV done.")
         except Exception as e:
@@ -137,10 +145,11 @@ class EnsembleModel:
             X_selected = self.feature_selector.transform(pd.DataFrame(X_scaled, index=X.index, columns=X.columns))
 
             # LSTM Predictions
-            lstm_preds = self.models['lstm'].predict(X_selected.values)
+            X_seq = self._create_lstm_sequences(X_selected.values)
+            lstm_preds = self.models['lstm'].predict(X_seq) if X_seq.size > 0 else np.zeros(len(X))
 
             # XGBoost Predictions
-            xgb_preds = self.models['xgboost'].predict(pd.DataFrame(X_selected, columns=self.feature_selector.selected_features))
+            xgb_preds = self.models['xgboost'].predict(pd.DataFrame(X_selected, columns=self.feature_selector.selected_features)) if not X_selected.empty else np.zeros(len(X))
 
             # Ensemble: Weighted average
             weights = self.config['ensemble']['weights']
@@ -153,6 +162,28 @@ class EnsembleModel:
             self.logger.error(f"Error making ensemble predictions: {e}")
             return np.zeros(len(X))
 
+    def _create_lstm_sequences(self, X: np.ndarray) -> np.ndarray:
+        """
+        Creates LSTM sequences from the selected features.
+
+        Args:
+            X (np.ndarray): Selected and scaled features.
+
+        Returns:
+            np.ndarray: LSTM sequences.
+        """
+        try:
+            seq_len = self.config['lstm']['sequence_length']
+            if len(X) < seq_len:
+                return np.array([])
+            X_seq = []
+            for i in range(len(X) - seq_len + 1):
+                X_seq.append(X[i:i+seq_len])
+            return np.array(X_seq)
+        except Exception as e:
+            self.logger.error(f"Error creating LSTM sequences: {e}")
+            return np.array([])
+
     def save(self, path: str):
         """
         Saves the ensemble model components.
@@ -162,7 +193,7 @@ class EnsembleModel:
         """
         try:
             for model_name, model in self.models.items():
-                model.save(f"{path}_{model_name}.model")
+                model.save(f"{path}_{model_name}.pkl")
             self.logger.info("Ensemble model saved successfully.")
         except Exception as e:
             self.logger.error(f"Error saving ensemble model: {e}")

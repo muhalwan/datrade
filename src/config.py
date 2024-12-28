@@ -1,7 +1,7 @@
-from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import BaseSettings, Field
 from typing import List
 import json
+import os
 
 class Settings(BaseSettings):
     # MongoDB settings
@@ -14,12 +14,7 @@ class Settings(BaseSettings):
     use_testnet: bool = Field(True, env='USE_TESTNET')
 
     # Trading settings
-    trading_symbols: List[str] = Field(default_factory=lambda: ["BTCUSDT"])
-
-    @classmethod
-    def get_symbols(cls) -> List[str]:
-        symbols = json.loads(Field(..., env='TRADING_SYMBOLS'))
-        return symbols if symbols else ["BTCUSDT"]
+    trading_symbols: List[str] = Field(default_factory=lambda: ["BTCUSDT"], env='TRADING_SYMBOLS')
 
     class Config:
         env_file = '.env'

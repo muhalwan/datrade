@@ -16,8 +16,10 @@ class MongoDBConnection:
 
     def connect(self) -> bool:
         try:
-            self.client = MongoClient(self.connection_string)
+            self.client = MongoClient(self.connection_string, serverSelectionTimeoutMS=30000)
             self.db = self.client[self.db_name]
+            # Trigger a server selection to catch connection errors early
+            self.client.server_info()
             self.logger.info(f"MongoDB connection established successfully to database: {self.db_name}")
             self.setup_indexes()
             return True
