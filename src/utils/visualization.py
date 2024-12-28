@@ -222,7 +222,7 @@ class TradingVisualizer:
             )
 
             # Add buy/sell signals
-            signals = np.diff(predictions) != 0
+            signals = np.diff((predictions > 0.5).astype(int)) != 0
             signal_dates = index[1:][signals]
             signal_prices = prices[1:][signals]
 
@@ -385,7 +385,7 @@ class TradingVisualizer:
     def _calculate_trade_durations(self, predictions: np.ndarray) -> np.ndarray:
         """Calculate durations of trades"""
         try:
-            trade_starts = np.where(np.diff(predictions) != 0)[0] + 1
+            trade_starts = np.where(np.diff((predictions > 0.5).astype(int)) != 0)[0] + 1
             trade_ends = np.append(trade_starts[1:], len(predictions))
             return trade_ends - trade_starts
         except Exception as e:
@@ -395,9 +395,9 @@ class TradingVisualizer:
     def _calculate_drawdown(self, returns: np.ndarray) -> np.ndarray:
         """Calculate drawdown series"""
         try:
-            cum_returns = (1 + returns).cumprod()
-            running_max = np.maximum.accumulate(cum_returns)
-            return (cum_returns - running_max) / running_max
+            cumulative = (1 + returns).cumprod()
+            running_max = np.maximum.accumulate(cumulative)
+            return (cumulative - running_max) / running_max
         except Exception as e:
             self.logger.error(f"Error calculating drawdown: {e}")
             return np.zeros_like(returns)

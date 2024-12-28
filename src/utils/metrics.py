@@ -56,7 +56,7 @@ def calculate_trading_metrics(
         strategy_returns = price_returns * y_pred[:-1]
 
         # Apply transaction costs
-        trades = np.diff(y_pred) != 0
+        trades = np.diff((y_pred > 0.5).astype(int)) != 0
         strategy_returns[trades] -= transaction_cost
 
         # Trading metrics

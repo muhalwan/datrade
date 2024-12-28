@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Dict
 import logging
+import pickle
 
 import numpy as np
 
@@ -58,7 +59,8 @@ class BaseModel(ABC):
         """
         try:
             if self.model:
-                self.model.save(path)
+                with open(path, 'wb') as f:
+                    pickle.dump(self.model, f)
                 self.logger.info(f"Model saved to {path}")
             else:
                 self.logger.warning("No model to save.")
@@ -73,8 +75,8 @@ class BaseModel(ABC):
             path (str): File path to load the model from.
         """
         try:
-            from tensorflow.keras.models import load_model
-            self.model = load_model(path)
+            with open(path, 'rb') as f:
+                self.model = pickle.load(f)
             self.logger.info(f"Model loaded from {path}")
         except Exception as e:
             self.logger.error(f"Error loading model: {e}")

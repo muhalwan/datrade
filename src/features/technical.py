@@ -1,8 +1,7 @@
 import pandas as pd
 import numpy as np
-from typing import Optional
-import logging
 import talib
+import logging
 
 class TechnicalIndicators:
     """
@@ -13,68 +12,69 @@ class TechnicalIndicators:
         self.logger = logging.getLogger(__name__)
 
     def calculate(self, price_data: pd.DataFrame) -> pd.DataFrame:
-        """
-        Calculates technical indicators and returns a DataFrame.
-
-        Args:
-            price_data (pd.DataFrame): OHLCV price data.
-
-        Returns:
-            pd.DataFrame: DataFrame containing technical indicators.
-        """
         try:
-            indicators = {}
-            close = price_data['close'].values
-            high = price_data['high'].values
-            low = price_data['low'].values
-            volume = price_data['volume'].values
+            self.logger.info("Calculating technical indicators.")
+            tech_df = pd.DataFrame(index=price_data.index)
 
             # Moving Averages
-            indicators['sma_5'] = talib.SMA(close, timeperiod=5)
-            indicators['ema_5'] = talib.EMA(close, timeperiod=5)
-            indicators['sma_10'] = talib.SMA(close, timeperiod=10)
-            indicators['ema_10'] = talib.EMA(close, timeperiod=10)
-            indicators['sma_20'] = talib.SMA(close, timeperiod=20)
-            indicators['ema_20'] = talib.EMA(close, timeperiod=20)
-            indicators['sma_50'] = talib.SMA(close, timeperiod=50)
-            indicators['ema_50'] = talib.EMA(close, timeperiod=50)
-            indicators['sma_100'] = talib.SMA(close, timeperiod=100)
-            indicators['ema_100'] = talib.EMA(close, timeperiod=100)
+            tech_df['sma_20'] = talib.SMA(price_data['close'], timeperiod=20)
+            tech_df['ema_20'] = talib.EMA(price_data['close'], timeperiod=20)
 
             # Momentum Indicators
-            indicators['rsi'] = talib.RSI(close, timeperiod=14)
-            indicators['stoch_k'], indicators['stoch_d'] = talib.STOCH(high, low, close, fastk_period=14, slowk_period=3, slowk_matype=0, slowd_period=3, slowd_matype=0)
-            indicators['macd'], indicators['macd_signal'], indicators['macd_hist'] = talib.MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
+            tech_df['rsi_14'] = talib.RSI(price_data['close'], timeperiod=14)
+            tech_df['stochastic_k'], tech_df['stochastic_d'] = talib.STOCH(
+                price_data['high'], price_data['low'], price_data['close'],
+                fastk_period=14, slowk_period=3, slowk_matype=0,
+                slowd_period=3, slowd_matype=0
+            )
+            tech_df['macd'], tech_df['macdsignal'], tech_df['macdhist'] = talib.MACD(
+                price_data['close'], fastperiod=12, slowperiod=26, signalperiod=9
+            )
 
             # Volatility Indicators
-            indicators['atr'] = talib.ATR(high, low, close, timeperiod=14)
-            indicators['bb_upper'], indicators['bb_middle'], indicators['bb_lower'] = talib.BBANDS(close, timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)
-            indicators['bb_width'] = indicators['bb_upper'] - indicators['bb_lower']
-            indicators['kc_middle'], indicators['kc_upper'], indicators['kc_lower'] = talib.KC(close, high, low, timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)
+            tech_df['atr_14'] = talib.ATR(price_data['high'], price_data['low'], price_data['close'], timeperiod=14)
+            tech_df['bollinger_upper'], tech_df['bollinger_middle'], tech_df['bollinger_lower'] = talib.BBANDS(
+                price_data['close'], timeperiod=20, nbdevup=2, nbdevdn=2, matype=0
+            )
+            tech_df['keltner_upper'], tech_df['keltner_middle'], tech_df['keltner_lower'] = self._calculate_keltner_channels(price_data)
 
             # Volume Indicators
-            indicators['obv'] = talib.OBV(close, volume)
-            indicators['obv_sma'] = talib.SMA(indicators['obv'], timeperiod=20)
+            tech_df['obv'] = talib.OBV(price_data['close'], price_data['volume'])
 
             # Candlestick Patterns
-            indicators['cdl_engulfing'] = talib.CDLENGULFING(open=price_data['open'].values, high=high, low=low, close=close)
-            indicators['cdl_hammer'] = talib.CDLHAMMER(open=price_data['open'].values, high=high, low=low, close=close)
+            tech_df['cdl_pattern'] = self._identify_candlestick_patterns(price_data)
 
             # Additional Features
-            indicators['vwap'] = self.calculate_vwap(price_data)
-            indicators['volatility'] = indicators['atr']
-            indicators['volatility_ma'] = talib.SMA(indicators['volatility'], timeperiod=20)
-            indicators['trend_strength_5'] = self.calculate_trend_strength(close, window=5)
-            indicators['trend_strength_20'] = self.calculate_trend_strength(close, window=20)
-            indicators['returns'] = self.calculate_returns(close)
+            tech_df['vwap'] = self.calculate_vwap(price_data)
+            tech_df['trend_strength_20'] = self.calculate_trend_strength(price_data['close'].values, window=20)
+            tech_df['returns'] = self.calculate_returns(price_data['close'].values)
 
-            # Convert to DataFrame
-            tech_df = pd.DataFrame(indicators, index=price_data.index)
             self.logger.info("Technical indicators calculated successfully.")
             return tech_df
         except Exception as e:
             self.logger.error(f"Error calculating technical indicators: {e}")
             return pd.DataFrame()
+
+    def _calculate_keltner_channels(self, price_data: pd.DataFrame) -> tuple:
+        """Calculate Keltner Channels"""
+        try:
+            ema = talib.EMA(price_data['close'], timeperiod=20)
+            atr = talib.ATR(price_data['high'], price_data['low'], price_data['close'], timeperiod=10)
+            upper = ema + (1.5 * atr)
+            lower = ema - (1.5 * atr)
+            return upper, ema, lower
+        except Exception as e:
+            self.logger.error(f"Error calculating Keltner Channels: {e}")
+            return pd.Series([np.nan]*len(price_data)), pd.Series([np.nan]*len(price_data)), pd.Series([np.nan]*len(price_data))
+
+    def _identify_candlestick_patterns(self, price_data: pd.DataFrame) -> pd.Series:
+        """Identify candlestick patterns"""
+        try:
+            patterns = talib.CDLDRAGONFLYDOJI(price_data['open'], price_data['high'], price_data['low'], price_data['close'])
+            return patterns
+        except Exception as e:
+            self.logger.error(f"Error identifying candlestick patterns: {e}")
+            return pd.Series([0]*len(price_data))
 
     def calculate_vwap(self, price_data: pd.DataFrame) -> np.ndarray:
         """

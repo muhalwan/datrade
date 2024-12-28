@@ -208,7 +208,8 @@ class AdaptiveLearningSystem:
                     sharpe=np.mean([p.sharpe for p in history]),
                     profit_factor=np.mean([p.profit_factor for p in history]),
                     win_rate=np.mean([p.win_rate for p in history]),
-                    drawdown=np.mean([p.drawdown for p in history])
+                    drawdown=np.mean([p.drawdown for p in history]),
+                    confidence=np.mean([p.confidence for p in history])
                 )
 
                 scores[model_name] = self._calculate_composite_score(avg_performance)

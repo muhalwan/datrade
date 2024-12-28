@@ -5,16 +5,24 @@ from src.data.database.connection import MongoDBConnection
 from src.features.processor import FeatureProcessor
 from src.models.ensemble import EnsembleModel
 from src.utils.metrics import calculate_trading_metrics
+from src.config import settings
 import sys
+import os
 
 def setup_logging():
     """Setup logging configuration"""
+    log_dir = os.path.join("logs")
+    os.makedirs(log_dir, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = os.path.join(log_dir, f"training_{timestamp}.log")
+
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler("logs/training.log")
+            logging.FileHandler(log_file)
         ]
     )
     return logging.getLogger(__name__)
@@ -70,6 +78,7 @@ class Trainer:
                 self.logger.info(f"{key}: {value:.4f}")
 
             # Save models
+            os.makedirs("models/trained", exist_ok=True)
             self.ensemble.save("models/trained/BTCUSDT_model")
 
         except Exception as e:
@@ -79,8 +88,8 @@ def main():
     logger = setup_logging()
     logger.info("Initializing MongoDB connection...")
     db_config = {
-        'connection_string': 'your_mongodb_uri',
-        'name': 'crypto_trading'
+        'connection_string': settings.mongodb_uri,
+        'name': settings.db_name
     }
     db = MongoDBConnection(db_config)
 

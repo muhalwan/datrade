@@ -7,8 +7,8 @@ import sys
 from flask import Flask, render_template_string
 import threading
 
-from data.database.connection import MongoDBConnection
-from config import settings
+from src.data.database.connection import MongoDBConnection
+from src.config import settings
 
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
@@ -42,7 +42,7 @@ HTML_TEMPLATE = '''
             {% for key, value in status.items() %}
                 <div class="metric">
                     <span class="metric-label">{{ key }}:</span>
-                    <span {% if key == 'status' %} class="{{ value.lower() }}" {% endif %}>
+                    <span {% if key == 'Status' %} class="{{ value.lower() }}" {% endif %}>
                         {{ value }}
                     </span>
                 </div>
@@ -139,12 +139,12 @@ class DataCollectionMonitor:
                 'Recent Price Records (24h)': len(recent_data) if not recent_data.empty else 0,
                 'Recent Orderbook Records (24h)': orderbook_count,
                 'Data Rate (records/hour)': round(data_rate, 2),
-                'Last Update': last_update,
-                'Time Since Last Update': time_since_last,
+                'Last Update': last_update if last_update else "N/A",
+                'Time Since Last Update': str(time_since_last).split('.')[0],
                 'Total OHLCV Periods': ohlcv_info.get('total_periods', 0),
                 'Trainable Periods': ohlcv_info.get('trainable_periods', 0),
-                'Data Start': ohlcv_info.get('oldest_data'),
-                'Data End': ohlcv_info.get('newest_data'),
+                'Data Start': ohlcv_info.get('oldest_data', "N/A"),
+                'Data End': ohlcv_info.get('newest_data', "N/A"),
                 'Status': 'OK' if time_since_last < timedelta(minutes=5) else 'WARNING'
             }
 
@@ -199,6 +199,7 @@ class DataCollectionMonitor:
 
 def monitor_loop(interval_seconds: int = 300):
     """Continuous monitoring loop"""
+    logger = logging.getLogger(__name__)
     logger.info("Starting data collection monitor...")
 
     # Connect to database
