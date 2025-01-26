@@ -1,7 +1,5 @@
 from sklearn.feature_selection import mutual_info_classif
-from sklearn.preprocessing import LabelEncoder
 import pandas as pd
-import numpy as np
 import logging
 from typing import Optional, List
 

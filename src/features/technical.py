@@ -14,7 +14,15 @@ class TechnicalIndicators:
     def calculate(self, price_data: pd.DataFrame) -> pd.DataFrame:
         try:
             self.logger.info("Calculating technical indicators.")
-            tech_df = pd.DataFrame(index=price_data.index)
+            tech_df = pd.DataFrame({'close': price_data['close']}, index=price_data.index)
+            required_columns = ['close', 'high', 'low', 'open', 'volume']  # Added all required OHLCV columns
+
+            # Changed df to price_data
+            missing_columns = [col for col in required_columns if col not in price_data.columns]
+
+            if missing_columns:
+                self.logger.error(f"Missing columns for technical indicators: {missing_columns}")
+                raise KeyError(f"Missing columns: {missing_columns}")
 
             # Moving Averages
             tech_df['sma_20'] = talib.SMA(price_data['close'], timeperiod=20)

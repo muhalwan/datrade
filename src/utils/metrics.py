@@ -37,18 +37,33 @@ def calculate_trading_metrics(
         y_pred: np.ndarray,
         prices: np.ndarray,
         transaction_cost: float = 0.001,
-        risk_free_rate: float = 0.0,
-        benchmark_returns: Optional[np.ndarray] = None
+        risk_free_rate: float = 0.0
 ) -> Dict[str, float]:
     """Calculate comprehensive trading and ML metrics"""
     try:
-        # ML metrics
+        # Calculate returns
+        price_returns = np.diff(prices) / prices[:-1]
+
+        # Get trading positions and ensure alignment
+        positions = (y_pred > 0.5).astype(int)
+        strategy_returns = price_returns * positions[:-1]  # Positions affect next day's return
+
+        # Calculate trades between positions
+        trades = np.diff(positions) != 0
+
+        # Apply transaction costs
+        strategy_returns[trades] -= transaction_cost
+
+        # ML metrics (aligned with y_true)
+        y_true_aligned = y_true[:-1]  # Match strategy_returns length
+        y_pred_aligned = positions[:-1]
+
         ml_metrics = {
-            'accuracy': accuracy_score(y_true, (y_pred > 0.5).astype(int)),
-            'precision': precision_score(y_true, (y_pred > 0.5).astype(int), zero_division=0),
-            'recall': recall_score(y_true, (y_pred > 0.5).astype(int), zero_division=0),
-            'f1': f1_score(y_true, (y_pred > 0.5).astype(int), zero_division=0),
-            'roc_auc': roc_auc_score(y_true, y_pred)
+            'accuracy': accuracy_score(y_true_aligned, y_pred_aligned),
+            'precision': precision_score(y_true_aligned, y_pred_aligned, zero_division=0),
+            'recall': recall_score(y_true_aligned, y_pred_aligned, zero_division=0),
+            'f1': f1_score(y_true_aligned, y_pred_aligned, zero_division=0),
+            'roc_auc': roc_auc_score(y_true_aligned, y_pred[:-1])  # Use probabilities if available
         }
 
         # Calculate returns

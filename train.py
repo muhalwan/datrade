@@ -48,6 +48,7 @@ class Trainer:
 
             price_data = self.db.fetch_price_data(symbol, start_date, end_date)
             orderbook_data = self.db.fetch_orderbook_data(symbol, start_date, end_date)
+            self.ensemble.price_data = price_data.iloc[:-1]
 
             if price_data is None or orderbook_data is None:
                 self.logger.error("Failed to fetch necessary data for training.")
@@ -65,12 +66,20 @@ class Trainer:
 
             self.ensemble.train(features, target)
 
-            # Evaluate model
+            # Get LSTM sequence length from config
+            lstm_seq_len = self.config['ensemble']['lstm']['sequence_length']
+
+            # Align predictions with data starting from sequence boundary
             predictions = self.ensemble.predict(features)
+
+            # Calculate valid start index for metrics
+            start_idx = lstm_seq_len - 1  # Predictions start after sequence window
+            min_length = min(len(predictions), len(target) - start_idx, len(price_data) - start_idx)
+
             metrics = calculate_trading_metrics(
-                y_true=target.values,
-                y_pred=predictions,
-                prices=price_data['close'].values
+                y_true=target.values[start_idx:start_idx + min_length],
+                y_pred=predictions[:min_length],
+                prices=price_data['close'].values[start_idx:start_idx + min_length]
             )
 
             self.logger.info("Training Metrics:")
@@ -112,7 +121,6 @@ def main():
                 'params': {
                     'objective': 'binary:logistic',
                     'eval_metric': 'logloss',
-                    'use_label_encoder': False
                 }
             },
             'feature_selector': {

@@ -16,6 +16,7 @@ class EnsembleModel:
     """
 
     def __init__(self, config: Dict):
+        self.price_data = None
         self.logger = logging.getLogger(__name__)
         self.config = config
         self.models: Dict[str, BaseModel] = {
@@ -28,12 +29,15 @@ class EnsembleModel:
     def train(self, X: pd.DataFrame, y: pd.Series):
         """
         Trains the ensemble model using time-series cross-validation.
-
-        Args:
-            X (pd.DataFrame): Feature DataFrame.
-            y (pd.Series): Target labels.
         """
         try:
+            if len(X) != len(y):
+                self.logger.error("Feature/target length mismatch before training")
+                return
+
+            # Trim features to match target length after sequence creation
+            X_trimmed = X.iloc[:len(y)]
+
             self.logger.info("Starting ensemble training...")
             # Feature selection and scaling
             self.logger.info("Fitting scaler and feature selector on training data...")
@@ -122,12 +126,13 @@ class EnsembleModel:
         Returns:
             Tuple[np.ndarray, np.ndarray]: Sequences and corresponding targets.
         """
-        seq_len = self.models['lstm'].sequence_length
+        seq_len = self.config['lstm']['sequence_length']
         X_seq = []
         y_seq = []
-        for i in range(len(X) - seq_len):
+        # Start from index 0 to maintain alignment with XGBoost
+        for i in range(len(X) - seq_len + 1):
             X_seq.append(X[i:i+seq_len])
-            y_seq.append(y[i+seq_len])
+            y_seq.append(y[i+seq_len-1])  # Predict next value after sequence
         return np.array(X_seq), np.array(y_seq)
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
@@ -142,24 +147,40 @@ class EnsembleModel:
         """
         try:
             X_scaled = self.scaler.transform(X)
-            X_selected = self.feature_selector.transform(pd.DataFrame(X_scaled, index=X.index, columns=X.columns))
+            X_selected = self.feature_selector.transform(
+                pd.DataFrame(X_scaled, index=X.index, columns=X.columns)
+            )
 
-            # LSTM Predictions
+            # LSTM Predictions with sequence alignment
             X_seq = self._create_lstm_sequences(X_selected.values)
-            lstm_preds = self.models['lstm'].predict(X_seq) if X_seq.size > 0 else np.zeros(len(X))
+            if X_seq.size > 0:
+                lstm_preds = self.models['lstm'].predict(X_seq)
+                # Account for sequence lookback
+                lstm_preds = lstm_preds[self.config['lstm']['sequence_length']-1:]
+            else:
+                lstm_preds = np.zeros(len(X))
 
             # XGBoost Predictions
-            xgb_preds = self.models['xgboost'].predict(pd.DataFrame(X_selected, columns=self.feature_selector.selected_features)) if not X_selected.empty else np.zeros(len(X))
+            xgb_preds = self.models['xgboost'].predict(
+                pd.DataFrame(X_selected, columns=self.feature_selector.selected_features)
+            )
 
-            # Ensemble: Weighted average
+            # Align predictions
+            min_length = min(len(lstm_preds), len(xgb_preds))
+            lstm_start = self.config['lstm']['sequence_length'] - 1
+            lstm_preds_padded = np.zeros(len(X))
+            lstm_preds_padded[lstm_start:lstm_start + len(lstm_preds)] = lstm_preds.flatten()
+
+            xgb_preds = xgb_preds[:min_length]
+
+            # Ensemble weighting
             weights = self.config['ensemble']['weights']
-            ensemble_pred = lstm_preds * weights.get('lstm', 0.5) + xgb_preds * weights.get('xgboost', 0.5)
+            ensemble_pred = lstm_preds * weights['lstm'] + xgb_preds * weights['xgboost']
 
-            # Binary threshold
-            binary_pred = (ensemble_pred > 0.5).astype(int)
-            return binary_pred
+            return (ensemble_pred > 0.5).astype(int)
+
         except Exception as e:
-            self.logger.error(f"Error making ensemble predictions: {e}")
+            self.logger.error(f"Error making predictions: {e}")
             return np.zeros(len(X))
 
     def _create_lstm_sequences(self, X: np.ndarray) -> np.ndarray:

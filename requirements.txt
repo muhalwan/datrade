@@ -2,7 +2,7 @@
 python-binance==1.0.22
 pymongo[srv]==4.3.3
 pandas==2.2.1
-numpy==1.26.4
+numpy>=1.22.4,<1.24.0
 pyyaml>=6.0.1
 python-dateutil==2.8.2
 websocket-client==1.6.4
@@ -14,8 +14,10 @@ fake-useragent==1.4.0
 pyOpenSSL>=24.0.0
 plotly>=5.18.0
 python-dotenv==1.0.0
-pydantic-settings>=2.0.0
-pydantic>=2.5.1
+
+# Updated Pydantic and Pydantic-Settings
+pydantic>=2.7.0
+pydantic-settings>=2.7.0
 
 # Phase 2
 scikit-learn>=1.4.0
@@ -23,11 +25,13 @@ tensorflow==2.12.0
 xgboost>=2.0.3
 prophet>=1.1.5
 ta>=0.11.0
+
 # PyTorch with CUDA 11.8 Support
 torch==2.0.1+cu118
 torchvision==0.15.2+cu118
 torchaudio==2.0.2+cu118
 -f https://download.pytorch.org/whl/cu118/torch_stable.html
+
 optuna>=3.5.0
 lightgbm>=4.3.0
 nltk>=3.8.1
@@ -38,7 +42,7 @@ seaborn>=0.13.2
 holidays<=1.0
 
 # New dependencies for improved functionality
-asyncio==3.4.3
+# Removed asyncio==3.4.3 as it's part of the standard library in Python 3.9
 aiohttp>=3.9.1
 psutil>=5.9.6
 nest-asyncio>=1.5.8
@@ -49,3 +53,4 @@ attrs>=23.1.0
 flask==3.0.0
 flask-socketio==5.3.6
 eventlet==0.33.3
+ta-lib==0.5.2

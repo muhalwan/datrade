@@ -40,6 +40,7 @@ class MongoDBConnection:
             self.logger.error(f"Error setting up indexes: {e}")
 
     def fetch_price_data(self, symbol: str, start_date: datetime, end_date: datetime) -> Optional[pd.DataFrame]:
+        """Fetches and converts trade data to 1-minute OHLCV candles"""
         try:
             if self.db is None:
                 self.logger.warning("Database not connected. Attempting to connect...")
@@ -47,30 +48,48 @@ class MongoDBConnection:
                     self.logger.error("Failed to connect to MongoDB.")
                     return None
 
+            # Fetch raw trade data
             collection: Collection = self.db.price_data
             query = {
                 "symbol": symbol,
                 "trade_time": {"$gte": start_date, "$lte": end_date}
             }
             cursor = collection.find(query).sort("trade_time", ASCENDING)
-            df = pd.DataFrame(list(cursor))
-            if not df.empty:
-                df['trade_time'] = pd.to_datetime(df['trade_time'])
-                df.set_index('trade_time', inplace=True)
-                self.logger.info(f"Fetched {len(df)} records from 'price_data' collection.")
-                return df
-            else:
-                self.logger.warning(f"No data found for symbol {symbol} in the given date range.")
+            trades_df = pd.DataFrame(list(cursor))
+
+            if trades_df.empty:
+                self.logger.warning(f"No price data found for {symbol} in the given date range")
                 return pd.DataFrame()
 
+            # Convert to OHLCV
+            trades_df['trade_time'] = pd.to_datetime(trades_df['trade_time'])
+            trades_df.set_index('trade_time', inplace=True)
+
+            # Resample with modern pandas syntax
+            ohlcv_df = trades_df.resample('1min').agg(
+                open=('price', 'first'),
+                high=('price', 'max'),
+                low=('price', 'min'),
+                close=('price', 'last'),
+                volume=('quantity', 'sum')
+            )
+
+            # Handle missing data
+            ohlcv_df[['open', 'high', 'low', 'close']] = ohlcv_df[['open', 'high', 'low', 'close']].ffill()
+            ohlcv_df['volume'] = ohlcv_df['volume'].fillna(0)
+
+            self.logger.info(f"Generated {len(ohlcv_df)} OHLCV records from raw trades")
+            return ohlcv_df
+
         except PyMongoError as e:
-            self.logger.error(f"Error fetching price data: {e}")
+            self.logger.error(f"MongoDB error fetching price data: {e}")
             return None
         except Exception as e:
-            self.logger.error(f"Unexpected error fetching price data: {e}")
+            self.logger.error(f"Error processing price data: {e}")
             return None
 
     def fetch_orderbook_data(self, symbol: str, start_date: datetime, end_date: datetime) -> Optional[pd.DataFrame]:
+        """Fetches and aggregates order book data to best bid/ask"""
         try:
             if self.db is None:
                 self.logger.warning("Database not connected. Attempting to connect...")
@@ -78,27 +97,54 @@ class MongoDBConnection:
                     self.logger.error("Failed to connect to MongoDB.")
                     return None
 
+            # Fetch raw order book updates
             collection: Collection = self.db.order_book
             query = {
                 "symbol": symbol,
                 "timestamp": {"$gte": start_date, "$lte": end_date}
             }
             cursor = collection.find(query).sort("timestamp", ASCENDING)
-            df = pd.DataFrame(list(cursor))
-            if not df.empty:
-                df['timestamp'] = pd.to_datetime(df['timestamp'])
-                df.set_index('timestamp', inplace=True)
-                self.logger.info(f"Fetched {len(df)} records from 'order_book' collection.")
-                return df
-            else:
-                self.logger.warning(f"No data found for symbol {symbol} in the given date range.")
+            ob_df = pd.DataFrame(list(cursor))
+
+            if ob_df.empty:
+                self.logger.warning(f"No order book data found for {symbol} in the given date range")
                 return pd.DataFrame()
 
+            # Process order book data
+            ob_df['timestamp'] = pd.to_datetime(ob_df['timestamp'])
+            ob_df.set_index('timestamp', inplace=True)
+
+            # Modern groupby and aggregation
+            grouped = ob_df.groupby([pd.Grouper(freq='1s'), 'side']).agg(
+                price=('price', 'last'),
+                quantity=('quantity', 'sum')
+            )
+
+            # Unstack and flatten columns
+            aggregated = grouped.unstack(level='side')
+            aggregated.columns = [f"{col[0]}_{col[1]}" for col in aggregated.columns]
+
+            # Create final dataframe with proper column names
+            final_df = pd.DataFrame(index=aggregated.index)
+            final_df['best_bid'] = aggregated.get('price_bid', pd.Series(index=aggregated.index))
+            final_df['best_ask'] = aggregated.get('price_ask', pd.Series(index=aggregated.index))
+            final_df['bid_volume'] = aggregated.get('quantity_bid', pd.Series(index=aggregated.index)).fillna(0)
+            final_df['ask_volume'] = aggregated.get('quantity_ask', pd.Series(index=aggregated.index)).fillna(0)
+
+            # Forward fill prices and resample to 1 minute
+            final_df = final_df.reindex(columns=[
+                'best_bid', 'best_ask',
+                'bid_volume', 'ask_volume'
+            ], fill_value=0)
+
+            self.logger.info(f"Aggregated {len(final_df)} order book snapshots")
+            return final_df
+
         except PyMongoError as e:
-            self.logger.error(f"Error fetching orderbook data: {e}")
+            self.logger.error(f"MongoDB error fetching order book data: {e}")
             return None
         except Exception as e:
-            self.logger.error(f"Unexpected error fetching orderbook data: {e}")
+            self.logger.error(f"Error processing order book data: {e}")
             return None
 
     def get_collection(self, collection_name: str) -> Optional[Collection]:
