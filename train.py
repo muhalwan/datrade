@@ -77,13 +77,18 @@ class Trainer:
             predictions = self.ensemble.predict(features)
 
             # Calculate valid start index for metrics
-            start_idx = lstm_seq_len - 1  # Predictions start after sequence window
+            start_idx = lstm_seq_len - 1
             min_length = min(len(predictions), len(target) - start_idx, len(price_data) - start_idx)
 
+            # Ensure the slices do not exceed array bounds
+            y_true_slice = target.values[start_idx:start_idx + min_length]
+            y_pred_slice = predictions[:min_length]
+            prices_slice = price_data['close'].values[start_idx:start_idx + min_length]
+
             metrics = calculate_trading_metrics(
-                y_true=target.values[start_idx:start_idx + min_length],
-                y_pred=predictions[:min_length],
-                prices=price_data['close'].values[start_idx:start_idx + min_length]
+                y_true=y_true_slice,
+                y_pred=y_pred_slice,
+                prices=prices_slice
             )
 
             self.logger.info("Training Metrics:")

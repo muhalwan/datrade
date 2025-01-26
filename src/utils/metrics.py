@@ -41,41 +41,33 @@ def calculate_trading_metrics(
 ) -> Dict[str, float]:
     """Calculate comprehensive trading and ML metrics"""
     try:
+        # Ensure equal lengths for all inputs
         min_length = min(len(y_true), len(y_pred), len(prices) - 1)
         y_true = y_true[:min_length]
         y_pred = y_pred[:min_length]
         prices = prices[:min_length + 1]
+
         # Calculate returns
         price_returns = np.diff(prices) / prices[:-1]
-        # Get trading positions and ensure alignment
-        positions = (y_pred > 0.5).astype(int)
-        strategy_returns = price_returns * y_pred  # Positions affect next day's return
 
-        # Calculate trades between positions
+        # Use full length predictions
+        positions = (y_pred > 0.5).astype(int)
+        strategy_returns = price_returns * positions
+
+        # Calculate trades
         trades = np.diff(positions) != 0
 
         # Apply transaction costs
         strategy_returns[trades] -= transaction_cost
 
-        # ML metrics (aligned with y_true)
-        y_true_aligned = y_true[:-1]  # Match strategy_returns length
-        y_pred_aligned = positions[:-1]
-
+        # ML metrics
         ml_metrics = {
-            'accuracy': accuracy_score(y_true_aligned, y_pred_aligned),
-            'precision': precision_score(y_true_aligned, y_pred_aligned, zero_division=0),
-            'recall': recall_score(y_true_aligned, y_pred_aligned, zero_division=0),
-            'f1': f1_score(y_true_aligned, y_pred_aligned, zero_division=0),
-            'roc_auc': roc_auc_score(y_true_aligned, y_pred[:-1])  # Use probabilities if available
+            'accuracy': accuracy_score(y_true, positions),
+            'precision': precision_score(y_true, positions, zero_division=0),
+            'recall': recall_score(y_true, positions, zero_division=0),
+            'f1': f1_score(y_true, positions, zero_division=0),
+            'roc_auc': roc_auc_score(y_true, y_pred[:min_length])
         }
-
-        # Calculate returns
-        price_returns = np.diff(prices) / prices[:-1]
-        strategy_returns = price_returns * y_pred[:-1]
-
-        # Apply transaction costs
-        trades = np.diff((y_pred > 0.5).astype(int)) != 0
-        strategy_returns[trades] -= transaction_cost
 
         # Trading metrics
         trading_metrics = {

@@ -157,6 +157,10 @@ class EnsembleModel:
         Generates ensemble predictions by combining LSTM and XGBoost predictions.
         """
         try:
+            if self.scaler is None or self.feature_selector is None:
+                self.logger.error("Model not trained. Cannot make predictions.")
+                return np.zeros(len(X))
+
             X_scaled = self.scaler.transform(X)
             X_selected = self.feature_selector.transform(
                 pd.DataFrame(X_scaled, index=X.index, columns=X.columns)
@@ -166,8 +170,6 @@ class EnsembleModel:
             X_seq = self._create_lstm_sequences(X_selected.values)
             if X_seq.size > 0:
                 lstm_preds = self.models['lstm'].predict(X_seq)
-                # Account for sequence lookback
-                lstm_preds = lstm_preds[self.config['lstm']['sequence_length']-1:]
             else:
                 lstm_preds = np.zeros(len(X))
 
@@ -180,17 +182,23 @@ class EnsembleModel:
             lstm_start = self.config['lstm']['sequence_length'] - 1
             valid_length = len(X) - lstm_start
             lstm_preds = lstm_preds[:valid_length]
-            xgb_preds = xgb_preds[lstm_start:]
+            xgb_preds = xgb_preds[lstm_start:lstm_start + valid_length]
 
+            # Ensure equal lengths after alignment
             min_length = min(len(lstm_preds), len(xgb_preds))
             lstm_preds = lstm_preds[:min_length]
             xgb_preds = xgb_preds[:min_length]
 
+            # Get ensemble weights from config
+            ensemble_weights = self.config['ensemble']['weights']
+            lstm_weight = ensemble_weights.get('lstm', 0.5)
+            xgb_weight = ensemble_weights.get('xgboost', 0.5)
+
             # Ensemble weighting
-            weights = self.config['ensemble']['weights']
-            ensemble_pred = lstm_preds * weights['lstm'] + xgb_preds * weights['xgboost']
+            ensemble_pred = (lstm_preds * lstm_weight) + (xgb_preds * xgb_weight)
 
             return (ensemble_pred > 0.5).astype(int)
+
         except Exception as e:
             self.logger.error(f"Error making predictions: {e}")
             return np.zeros(len(X))
