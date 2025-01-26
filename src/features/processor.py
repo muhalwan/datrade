@@ -1,5 +1,6 @@
-from typing import Tuple
+import numpy as np
 import pandas as pd
+from typing import Tuple
 import logging
 from .technical import TechnicalIndicators
 from .sentiment import SentimentAnalyzer
@@ -17,67 +18,56 @@ class FeatureProcessor:
     def process(self, price_data: pd.DataFrame, orderbook_data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
         try:
             self.logger.info("Processing features from price and orderbook data.")
-
-            # Align data first
             price_data, orderbook_data = self._align_data(price_data, orderbook_data)
 
-            # Check if data is empty after alignment
+            # Validate input data
             if price_data.empty or orderbook_data.empty:
                 self.logger.error("Aligned data is empty. Check input data sources.")
                 return pd.DataFrame(), pd.Series()
 
-            # Technical features
+            # Technical features with enhanced NaN handling
             tech_features = self.technical_indicators.calculate(price_data)
-            if tech_features.empty:
-                self.logger.error("Technical features calculation failed.")
-                return pd.DataFrame(), pd.Series()
+            tech_features = tech_features.replace([np.inf, -np.inf], np.nan)
 
-            # Sentiment features
+            # Fill remaining NaNs with column means
+            tech_features = tech_features.fillna(tech_features.mean())
+
+            # Sentiment features with default values
             sentiment_features = self.sentiment_analyzer.analyze(orderbook_data)
-            if sentiment_features.empty:
-                self.logger.error("Sentiment features calculation failed.")
+            sentiment_features = sentiment_features.fillna(0)
+
+            # Merge features with validation
+            features = tech_features.join(sentiment_features, how='left')
+            features = features.fillna(0)
+
+            # Final NaN check and cleanup
+            if features.isnull().any().any():
+                self.logger.warning(f"Final NaN removal: {features.isnull().sum().sum()} values")
+                features = features.dropna()
+
+            # Target creation with strict index alignment
+            aligned_price = price_data.reindex(features.index, method='ffill')
+            features = features[~aligned_price['close'].isnull()]
+            aligned_price = aligned_price.dropna()
+
+            if len(features) == 0 or len(aligned_price) == 0:
+                self.logger.error("Final dataset validation failed.")
                 return pd.DataFrame(), pd.Series()
 
-            # Merge features
-            features = tech_features.join(sentiment_features, how='inner')
-            if features.empty:
-                self.logger.error("No features after merging technical and sentiment data.")
-                return pd.DataFrame(), pd.Series()
-
-            # Handle missing values
-            features.ffill(inplace=True)
-            features.bfill(inplace=True)
-            features.dropna(inplace=True)
-            if features.empty:
-                self.logger.error("Features DataFrame is empty after handling missing values.")
-                return pd.DataFrame(), pd.Series()
-
-            # Ensure price_data is aligned with features after processing
-            aligned_price_data = price_data.reindex(features.index, method='ffill')
-            if aligned_price_data.empty:
-                self.logger.error("Aligned price data is empty.")
-                return pd.DataFrame(), pd.Series()
-
-            # Create target using FUTURE close price
-            features['future_close'] = aligned_price_data['close'].shift(-1)
+            features['future_close'] = aligned_price['close'].shift(-1)
+            features = features.dropna(subset=['future_close'])
             features['target'] = (features['future_close'] > features['close']).astype(int)
 
-            # Remove rows with NaN target (last row)
-            features = features.dropna(subset=['target'])
-            if features.empty:
-                self.logger.error("No valid targets after processing.")
-                return pd.DataFrame(), pd.Series()
-
-            # Align price_data with features index
-            aligned_price_data = aligned_price_data.loc[features.index]
-
-            # Extract target
+            # Final validation
             target = features.pop('target')
+            if len(features) != len(target):
+                self.logger.error("Final feature/target length mismatch")
+                return pd.DataFrame(), pd.Series()
 
             return features, target
 
         except Exception as e:
-            self.logger.error(f"Error during feature processing: {str(e)}", exc_info=True)
+            self.logger.error(f"Feature processing failed: {str(e)}", exc_info=True)
             return pd.DataFrame(), pd.Series()
 
     def _align_data(self, price_data: pd.DataFrame, orderbook_data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:

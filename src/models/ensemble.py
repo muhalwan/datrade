@@ -28,43 +28,46 @@ class EnsembleModel:
         self.scaler = None
 
     def train(self, X: pd.DataFrame, y: pd.Series, class_weights: Optional[Dict[int, int]] = None):
-        """
-        Trains the ensemble model using time-series cross-validation.
-        """
         try:
-            if len(X) != len(y):
-                self.logger.error("Feature/target length mismatch before training")
+            # Validate input dimensions
+            if len(X) == 0 or len(y) == 0 or len(X) != len(y):
+                self.logger.error("Invalid training data dimensions")
                 return
 
-            # Trim features to match target length
-            X_trimmed = X.iloc[:len(y)]
+            # Feature preprocessing pipeline
+            X_clean = X.copy()
 
-            self.logger.info("Starting ensemble training...")
+            # 1. Remove constant features
+            variances = X_clean.var()
+            valid_features = variances[variances > 1e-8].index.tolist()
+            X_filtered = X_clean[valid_features]
 
-            # Step 1: Remove constant features
-            variances = X_trimmed.var()
-            non_constant_mask = variances > 1e-8
-            X_filtered = X_trimmed.loc[:, non_constant_mask]
-            if X_filtered.empty:
-                self.logger.error("All features have zero variance after filtering. Aborting training.")
-                return
-            self.logger.info(f"Removed {len(X_trimmed.columns)-len(X_filtered.columns)} constant features.")
+            # 2. Handle remaining NaN values
+            X_filtered = X_filtered.fillna(X_filtered.mean())
 
-            # Step 2: Feature scaling
+            # 3. Feature scaling
             self.scaler = StandardScaler()
             X_scaled = self.scaler.fit_transform(X_filtered)
-            X_scaled_df = pd.DataFrame(X_scaled, index=X_filtered.index, columns=X_filtered.columns)
+            X_scaled_df = pd.DataFrame(X_scaled,
+                                       index=X_filtered.index,
+                                       columns=X_filtered.columns)
 
-            # Step 3: Feature selection
+            # 4. Feature selection with fallback
             self.feature_selector = FeatureSelector(n_features=self.config['feature_selector']['n_features'])
             X_selected = self.feature_selector.fit_transform(X_scaled_df, y)
 
-            if X_selected.empty or X_selected.shape[1] == 0:
-                self.logger.error("No features selected after feature selection. Aborting training.")
+            if X_selected.empty:
+                self.logger.error("Feature selection failed - using all features as fallback")
+                X_selected = X_scaled_df
+
+            # 5. Final validation
+            if X_selected.empty or X_selected.isnull().any().any():
+                self.logger.error("Final feature set validation failed")
                 return
 
-            # Update LSTM with actual feature count
+            # Update models with final feature set
             self.models['lstm'].n_features = X_selected.shape[1]
+            self.logger.info(f"Training with {X_selected.shape[1]} features")
 
             # Time-series cross-validation
             self._time_series_cv(X_selected.values, y.values)

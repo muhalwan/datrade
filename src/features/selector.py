@@ -15,27 +15,41 @@ class FeatureSelector:
 
     def fit(self, X: pd.DataFrame, y: pd.Series):
         try:
-            self.logger.info("Fitting FeatureSelector using mutual information.")
+            self.logger.info("Starting feature selection")
 
-            # Check for NaN values
-            if X.isnull().values.any():
-                self.logger.error("Input contains NaN values. Handle missing values first.")
+            # Final NaN check with fallback
+            if X.isnull().any().any():
+                self.logger.warning("NaN values detected - using mean imputation")
+                X = X.fillna(X.mean())
+
+            # Variance threshold
+            variances = X.var()
+            valid_features = variances[variances > 1e-8].index.tolist()
+
+            if not valid_features:
+                self.logger.error("No valid features after variance threshold")
                 self.selected_features = []
                 return
 
-            # Check for constant features
-            if (X.nunique() == 1).all():
-                self.logger.error("All features are constant. Feature selection failed.")
-                self.selected_features = []
-                return
+            # Mutual information calculation
+            mi = mutual_info_classif(X[valid_features], y, random_state=42)
+            mi_series = pd.Series(mi, index=valid_features)
 
-            mi = mutual_info_classif(X, y, discrete_features='auto', random_state=42)
-            mi_series = pd.Series(mi, index=X.columns)
-            self.selected_features = mi_series.nlargest(self.n_features).index.tolist()
-            self.logger.info(f"Selected top {self.n_features} features.")
+            # Select top features with positive MI
+            positive_mi = mi_series[mi_series > 0]
+            if not positive_mi.empty:
+                self.selected_features = positive_mi.nlargest(
+                    min(self.n_features, len(positive_mi))
+                ).index.tolist()
+            else:
+                self.logger.warning("No features with positive MI - using top variance features")
+                self.selected_features = variances.nlargest(self.n_features).index.tolist()
+
+            self.logger.info(f"Selected {len(self.selected_features)} features")
+
         except Exception as e:
-            self.logger.error(f"Error during feature selection: {e}")
-            self.selected_features = []
+            self.logger.error(f"Feature selection failed: {e}")
+            self.selected_features = X.columns.tolist()[:self.n_features]
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         try:

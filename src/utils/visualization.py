@@ -23,15 +23,14 @@ class TradingVisualizer:
         }
 
     def plot_model_performance(self, y_true: np.ndarray, y_pred: np.ndarray,
-                           prices: np.ndarray, features: pd.DataFrame) -> Dict[str, go.Figure]:
-        """Create comprehensive performance visualization"""
+                               prices: np.ndarray, features: pd.DataFrame) -> Dict[str, go.Figure]:
         try:
-            figures = {}
-
-            # Ensure all inputs are numpy arrays
-            prices = np.asarray(prices)
-            y_true = np.asarray(y_true)
-            y_pred = np.asarray(y_pred)
+            # Ensure equal lengths
+            min_length = min(len(y_true), len(y_pred), len(prices)-1)
+            y_true = y_true[:min_length]
+            y_pred = y_pred[:min_length]
+            prices = prices[:min_length+1]
+            features = features.iloc[:min_length]
 
             # Use features index for alignment
             valid_index = features.index[:-1]  # Account for returns being 1 shorter
