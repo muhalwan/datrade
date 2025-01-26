@@ -451,3 +451,39 @@ class TradingVisualizer:
             self.logger.info(f"HTML report saved to {output_path}")
         except Exception as e:
             self.logger.error(f"Error saving HTML report: {e}")
+
+    def save_visualization(
+            self,
+            figures: Dict[str, go.Figure],
+            metrics: Dict[str, float],
+            output_path: str
+    ) -> None:
+        """Save interactive HTML report with figures and metrics"""
+        try:
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            with open(output_path, 'w') as f:
+                f.write("<html><head>")
+                f.write("<title>Trading Strategy Analysis</title>")
+                f.write("<style>")
+                f.write("body { font-family: Arial, sans-serif; margin: 20px; }")
+                f.write(".metric { display: inline-block; margin: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }")
+                f.write("</style>")
+                f.write("</head><body>")
+
+                # Add metrics summary
+                f.write("<h2>Performance Metrics</h2>")
+                f.write("<div>")
+                for name, value in metrics.items():
+                    f.write(f'<div class="metric"><b>{name.replace("_", " ").title()}:</b> {value:.4f}</div>')
+                f.write("</div>")
+
+                # Add figures
+                for name, fig in figures.items():
+                    f.write(f"<h2>{name.replace('_', ' ').title()}</h2>")
+                    f.write(fig.to_html(full_html=False, include_plotlyjs='cdn'))
+
+                f.write("</body></html>")
+
+            self.logger.info(f"HTML report saved to {output_path}")
+        except Exception as e:
+            self.logger.error(f"Error saving HTML report: {e}")

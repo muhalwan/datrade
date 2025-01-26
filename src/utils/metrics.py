@@ -91,12 +91,6 @@ def calculate_trading_metrics(
             'ulcer_index': calculate_ulcer_index(strategy_returns)
         }
 
-        # Add information ratio if benchmark provided
-        if benchmark_returns is not None:
-            trading_metrics['information_ratio'] = calculate_information_ratio(
-                strategy_returns, benchmark_returns
-            )
-
         return {**ml_metrics, **trading_metrics}
 
     except Exception as e:

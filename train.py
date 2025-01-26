@@ -6,6 +6,7 @@ from src.features.processor import FeatureProcessor
 from src.models.ensemble import EnsembleModel
 from src.utils.metrics import calculate_trading_metrics
 from src.config import settings
+from src.utils.visualization import TradingVisualizer
 import sys
 import os
 
@@ -90,8 +91,21 @@ class Trainer:
             os.makedirs("models/trained", exist_ok=True)
             self.ensemble.save("models/trained/BTCUSDT_model")
 
+            # --- Save visualizations ---
+            trading_visualizer = TradingVisualizer()
+            figures = trading_visualizer.plot_model_performance(
+                y_true=target.values[start_idx:start_idx + min_length],
+                y_pred=predictions[:min_length],
+                prices=price_data['close'].values[start_idx:start_idx + min_length],
+                features=features
+            )
+
+            report_path = f"reports/training_{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+            trading_visualizer.save_visualization(figures, metrics, report_path)
+
         except Exception as e:
             self.logger.error(f"Error during training: {e}", exc_info=True)
+
 
 def main():
     logger = setup_logging()

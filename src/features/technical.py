@@ -17,7 +17,6 @@ class TechnicalIndicators:
             tech_df = pd.DataFrame({'close': price_data['close']}, index=price_data.index)
             required_columns = ['close', 'high', 'low', 'open', 'volume']  # Added all required OHLCV columns
 
-            # Changed df to price_data
             missing_columns = [col for col in required_columns if col not in price_data.columns]
 
             if missing_columns:

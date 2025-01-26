@@ -182,9 +182,20 @@ class LSTMModel(BaseModel):
 
     def get_feature_importance(self) -> Dict[str, float]:
         """
-        Retrieves feature importance scores. (Not implemented for LSTM)
-
-        Returns:
-            Dict[str, float]: Empty dictionary as LSTM models do not provide feature importances.
+        Aggregates feature importance from all models, ensuring that only models with feature importance contribute.
         """
-        return {}
+        try:
+            importance = {}
+            for model_name, model in self.models.items():
+                if model_name == "xgboost":
+                    fi = model.get_feature_importance()
+                    for feature, score in fi.items():
+                        importance[feature] = importance.get(feature, 0) + score
+            # Normalize importance
+            total = sum(importance.values())
+            for feature in importance:
+                importance[feature] /= total
+            return importance
+        except Exception as e:
+            self.logger.error(f"Error aggregating feature importance: {e}")
+            return {}

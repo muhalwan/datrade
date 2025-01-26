@@ -63,11 +63,7 @@ class EnsembleModel:
 
     def _time_series_cv(self, X: np.ndarray, y: np.ndarray):
         """
-        Performs optional time-series cross-validation.
-
-        Args:
-            X (np.ndarray): Scaled and selected features.
-            y (np.ndarray): Target labels.
+        Performs time-series cross-validation with proper sequence handling.
         """
         try:
             n_splits = self.config['cross_validation']['n_splits']
@@ -138,12 +134,6 @@ class EnsembleModel:
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         """
         Generates ensemble predictions by combining LSTM and XGBoost predictions.
-
-        Args:
-            X (pd.DataFrame): Feature DataFrame.
-
-        Returns:
-            np.ndarray: Binary ensemble predictions.
         """
         try:
             X_scaled = self.scaler.transform(X)

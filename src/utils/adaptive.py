@@ -56,10 +56,8 @@ class AdaptiveLearningSystem:
 
                 # Adjust learning rate
                 if current_score > prev_score:
-                    # Increase learning rate slightly
                     new_lr = self.learning_rates[model_name] * 1.1
                 else:
-                    # Decrease learning rate more aggressively
                     new_lr = self.learning_rates[model_name] * 0.8
 
                 # Clip learning rate
