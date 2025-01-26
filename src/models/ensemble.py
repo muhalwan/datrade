@@ -11,22 +11,23 @@ from ..features.selector import FeatureSelector
 
 
 class EnsembleModel:
-    """
-    Combines multiple models (LSTM and XGBoost) into an enhanced ensemble.
-    """
-
     def __init__(self, config: Dict):
         self.price_data = None
         self.logger = logging.getLogger(__name__)
         self.config = config
+
+        # Remove n_features from LSTM config before initialization
+        lstm_config = self.config['lstm'].copy()
+        lstm_config.pop('n_features', None)
+
         self.models: Dict[str, BaseModel] = {
-            'lstm': LSTMModel(**self.config['lstm']),
+            'lstm': LSTMModel(**lstm_config),
             'xgboost': XGBoostModel(params=self.config['xgboost']['params'])
         }
         self.feature_selector = None
         self.scaler = None
 
-    def train(self, X: pd.DataFrame, y: pd.Series):
+    def train(self, X: pd.DataFrame, y: pd.Series, class_weights: Optional[Dict[int, int]] = None):
         """
         Trains the ensemble model using time-series cross-validation.
         """
@@ -35,36 +36,52 @@ class EnsembleModel:
                 self.logger.error("Feature/target length mismatch before training")
                 return
 
-            # Trim features to match target length after sequence creation
+            # Trim features to match target length
             X_trimmed = X.iloc[:len(y)]
 
             self.logger.info("Starting ensemble training...")
-            # Feature selection and scaling
-            self.logger.info("Fitting scaler and feature selector on training data...")
-            self.scaler = StandardScaler()
-            X_scaled = self.scaler.fit_transform(X)
 
+            # Step 1: Remove constant features
+            variances = X_trimmed.var()
+            non_constant_mask = variances > 1e-8
+            X_filtered = X_trimmed.loc[:, non_constant_mask]
+            if X_filtered.empty:
+                self.logger.error("All features have zero variance after filtering. Aborting training.")
+                return
+            self.logger.info(f"Removed {len(X_trimmed.columns)-len(X_filtered.columns)} constant features.")
+
+            # Step 2: Feature scaling
+            self.scaler = StandardScaler()
+            X_scaled = self.scaler.fit_transform(X_filtered)
+            X_scaled_df = pd.DataFrame(X_scaled, index=X_filtered.index, columns=X_filtered.columns)
+
+            # Step 3: Feature selection
             self.feature_selector = FeatureSelector(n_features=self.config['feature_selector']['n_features'])
-            X_selected = self.feature_selector.fit_transform(pd.DataFrame(X_scaled, index=X.index, columns=X.columns), y)
+            X_selected = self.feature_selector.fit_transform(X_scaled_df, y)
+
+            if X_selected.empty or X_selected.shape[1] == 0:
+                self.logger.error("No features selected after feature selection. Aborting training.")
+                return
+
+            # Update LSTM with actual feature count
+            self.models['lstm'].n_features = X_selected.shape[1]
 
             # Time-series cross-validation
             self._time_series_cv(X_selected.values, y.values)
 
             # Train on full data
             self.logger.info("Training XGBoost on full data...")
-            self.models['xgboost'].train(pd.DataFrame(X_selected, columns=self.feature_selector.selected_features), y)
+            self.models['xgboost'].train(X_selected, y, class_weights=class_weights)
 
             self.logger.info("Training LSTM on full data...")
-            self._train_lstm_full_data(X_selected.values, y.values)
+            self._train_lstm_full_data(X_selected.values, y.values, class_weights)
 
             self.logger.info("Ensemble training completed")
         except Exception as e:
             self.logger.error(f"Error in ensemble training: {e}")
 
     def _time_series_cv(self, X: np.ndarray, y: np.ndarray):
-        """
-        Performs time-series cross-validation with proper sequence handling.
-        """
+        """Performs time-series cross-validation with proper sequence handling."""
         try:
             n_splits = self.config['cross_validation']['n_splits']
             self.logger.info(f"Performing time-series cross-validation with {n_splits} splits...")
@@ -77,36 +94,37 @@ class EnsembleModel:
                 X_val_cv = X[(i+1)*split_size:(i+2)*split_size]
                 y_val_cv = y[(i+1)*split_size:(i+2)*split_size]
 
-                # Train XGBoost on CV split
+                # Skip if no features
+                if X_train_cv.shape[1] == 0:
+                    self.logger.warning("Skipping split due to no features")
+                    continue
+
+                # Train XGBoost
                 temp_xgb = XGBoostModel(params=self.config['xgboost']['params'])
                 temp_xgb.train(pd.DataFrame(X_train_cv, columns=self.feature_selector.selected_features), y_train_cv)
-                val_pred_xgb = temp_xgb.predict(pd.DataFrame(X_val_cv, columns=self.feature_selector.selected_features))
 
-                # Train LSTM on CV split
-                temp_lstm = LSTMModel(**self.config['lstm'])
+                # Train LSTM
+                temp_lstm = LSTMModel(
+                    sequence_length=self.config['lstm']['sequence_length'],
+                    lstm_units=self.config['lstm']['lstm_units'],
+                    dropout_rate=self.config['lstm']['dropout_rate'],
+                    recurrent_dropout=self.config['lstm']['recurrent_dropout'],
+                    learning_rate=self.config['lstm']['learning_rate'],
+                    batch_size=self.config['lstm']['batch_size']
+                )
+                temp_lstm.n_features = X_train_cv.shape[1]  # Dynamic feature count
                 X_train_seq, y_train_seq = self._make_lstm_sequence(X_train_cv, y_train_cv)
                 temp_lstm.train(X_train_seq, y_train_seq)
-                if len(X_val_cv) < self.config['lstm']['sequence_length']:
-                    val_pred_lstm = np.zeros(len(X_val_cv))
-                else:
-                    X_val_seq, y_val_seq = self._make_lstm_sequence(X_val_cv, y_val_cv)
-                    val_pred_lstm = temp_lstm.predict(X_val_seq)
 
             self.logger.info("Time-series CV done.")
         except Exception as e:
             self.logger.error(f"Error during time-series cross-validation: {e}")
 
-    def _train_lstm_full_data(self, X: np.ndarray, y: np.ndarray):
-        """
-        Trains the LSTM model on the full dataset.
-
-        Args:
-            X (np.ndarray): Scaled and selected features.
-            y (np.ndarray): Target labels.
-        """
+    def _train_lstm_full_data(self, X: np.ndarray, y: np.ndarray, class_weights: Optional[Dict[int, int]] = None):
         try:
             self.logger.info("Preparing sequences for LSTM training...")
             X_seq, y_seq = self._make_lstm_sequence(X, y)
+            # Remove class_weights parameter
             self.models['lstm'].train(X_seq, y_seq)
         except Exception as e:
             self.logger.error(f"Error training LSTM on full data: {e}")
@@ -156,11 +174,13 @@ class EnsembleModel:
             )
 
             # Align predictions
-            min_length = min(len(lstm_preds), len(xgb_preds))
             lstm_start = self.config['lstm']['sequence_length'] - 1
-            lstm_preds_padded = np.zeros(len(X))
-            lstm_preds_padded[lstm_start:lstm_start + len(lstm_preds)] = lstm_preds.flatten()
+            valid_length = len(X) - lstm_start
+            lstm_preds = lstm_preds[:valid_length]
+            xgb_preds = xgb_preds[lstm_start:]
 
+            min_length = min(len(lstm_preds), len(xgb_preds))
+            lstm_preds = lstm_preds[:min_length]
             xgb_preds = xgb_preds[:min_length]
 
             # Ensemble weighting
@@ -168,7 +188,6 @@ class EnsembleModel:
             ensemble_pred = lstm_preds * weights['lstm'] + xgb_preds * weights['xgboost']
 
             return (ensemble_pred > 0.5).astype(int)
-
         except Exception as e:
             self.logger.error(f"Error making predictions: {e}")
             return np.zeros(len(X))
@@ -228,5 +247,5 @@ class EnsembleModel:
                 importance[feature] /= total
             return importance
         except Exception as e:
-            self.logger.error(f"Error aggregating feature importance: {e}")
+            self.logger.error(f"Error getting feature importance: {e}")
             return {}

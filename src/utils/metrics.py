@@ -41,12 +41,15 @@ def calculate_trading_metrics(
 ) -> Dict[str, float]:
     """Calculate comprehensive trading and ML metrics"""
     try:
+        min_length = min(len(y_true), len(y_pred), len(prices) - 1)
+        y_true = y_true[:min_length]
+        y_pred = y_pred[:min_length]
+        prices = prices[:min_length + 1]
         # Calculate returns
         price_returns = np.diff(prices) / prices[:-1]
-
         # Get trading positions and ensure alignment
         positions = (y_pred > 0.5).astype(int)
-        strategy_returns = price_returns * positions[:-1]  # Positions affect next day's return
+        strategy_returns = price_returns * y_pred  # Positions affect next day's return
 
         # Calculate trades between positions
         trades = np.diff(positions) != 0
@@ -98,9 +101,10 @@ def calculate_trading_metrics(
         return {}
 
 def calculate_total_return(returns: np.ndarray) -> float:
-    """Calculate total return"""
     try:
-        return (1 + returns).prod() - 1
+        if len(returns) == 0:
+            return 0.0
+        return np.exp(np.log1p(returns).sum()) - 1
     except:
         return 0.0
 
@@ -138,12 +142,11 @@ def calculate_sortino_ratio(returns: np.ndarray, risk_free_rate: float = 0.0) ->
         return 0.0
 
 def calculate_max_drawdown(returns: np.ndarray) -> float:
-    """Calculate maximum drawdown"""
     try:
-        cumulative = (1 + returns).cumprod()
-        running_max = np.maximum.accumulate(cumulative)
-        drawdowns = (cumulative - running_max) / running_max
-        return abs(np.min(drawdowns))
+        cumulative = np.exp(np.log1p(returns).cumsum())
+        peak = np.maximum.accumulate(cumulative)
+        drawdown = (peak - cumulative) / peak
+        return np.max(drawdown)
     except:
         return 0.0
 

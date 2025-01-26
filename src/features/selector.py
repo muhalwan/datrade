@@ -16,10 +16,23 @@ class FeatureSelector:
     def fit(self, X: pd.DataFrame, y: pd.Series):
         try:
             self.logger.info("Fitting FeatureSelector using mutual information.")
+
+            # Check for NaN values
+            if X.isnull().values.any():
+                self.logger.error("Input contains NaN values. Handle missing values first.")
+                self.selected_features = []
+                return
+
+            # Check for constant features
+            if (X.nunique() == 1).all():
+                self.logger.error("All features are constant. Feature selection failed.")
+                self.selected_features = []
+                return
+
             mi = mutual_info_classif(X, y, discrete_features='auto', random_state=42)
             mi_series = pd.Series(mi, index=X.columns)
-            self.selected_features = mi_series.sort_values(ascending=False).head(self.n_features).index.tolist()
-            self.logger.info(f"Selected top {self.n_features} features based on mutual information.")
+            self.selected_features = mi_series.nlargest(self.n_features).index.tolist()
+            self.logger.info(f"Selected top {self.n_features} features.")
         except Exception as e:
             self.logger.error(f"Error during feature selection: {e}")
             self.selected_features = []

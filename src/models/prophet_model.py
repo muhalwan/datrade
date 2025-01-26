@@ -64,12 +64,3 @@ class ProphetModel(BaseModel):
         except Exception as e:
             self.logger.error(f"Error making Prophet predictions: {e}")
             return pd.Series([0.0] * len(X))
-
-    def get_feature_importance(self) -> Dict[str, float]:
-        """
-        Retrieves feature importance scores. (Not applicable for Prophet)
-
-        Returns:
-            Dict[str, float]: Empty dictionary as Prophet does not provide feature importances.
-        """
-        return {}

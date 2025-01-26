@@ -61,11 +61,14 @@ class Trainer:
 
             features, target = self.feature_processor.process(price_data, orderbook_data)
 
+            # Ensure class_weights are defined in the config
+            class_weights = self.config.get('class_weights', {0: 1, 1: 1})
+
             if features.empty or target.empty:
                 self.logger.error("Processed features or target are empty. Aborting training.")
                 return
 
-            self.ensemble.train(features, target)
+            self.ensemble.train(features, target, class_weights=class_weights)
 
             # Get LSTM sequence length from config
             lstm_seq_len = self.config['ensemble']['lstm']['sequence_length']
@@ -124,12 +127,11 @@ def main():
         'ensemble': {
             'lstm': {
                 'sequence_length': 30,
-                'n_features': None,
-                'lstm_units': [32, 16],
-                'dropout_rate': 0.3,
+                'lstm_units': [64, 32],
+                'dropout_rate': 0.4,
                 'recurrent_dropout': 0.0,
-                'learning_rate': 0.001,
-                'batch_size': 32
+                'learning_rate': 0.0005,
+                'batch_size': 64
             },
             'xgboost': {
                 'params': {
@@ -148,8 +150,9 @@ def main():
             },
             'cross_validation': {
                 'n_splits': 5
-            }
-        }
+            },
+        },
+        'class_weights': {0: 1, 1: 3}
     }
 
     trainer = Trainer(db, config)

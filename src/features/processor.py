@@ -18,57 +18,74 @@ class FeatureProcessor:
         try:
             self.logger.info("Processing features from price and orderbook data.")
 
-            # Ensure both dataframes have the same index (timestamps)
-            if not price_data.index.equals(orderbook_data.index):
-                self.logger.warning("Aligning price and orderbook data by index...")
-                price_data, orderbook_data = self._align_data(price_data, orderbook_data)
+            # Align data first
+            price_data, orderbook_data = self._align_data(price_data, orderbook_data)
+
+            # Check if data is empty after alignment
+            if price_data.empty or orderbook_data.empty:
+                self.logger.error("Aligned data is empty. Check input data sources.")
+                return pd.DataFrame(), pd.Series()
 
             # Technical features
             tech_features = self.technical_indicators.calculate(price_data)
+            if tech_features.empty:
+                self.logger.error("Technical features calculation failed.")
+                return pd.DataFrame(), pd.Series()
 
             # Sentiment features
             sentiment_features = self.sentiment_analyzer.analyze(orderbook_data)
+            if sentiment_features.empty:
+                self.logger.error("Sentiment features calculation failed.")
+                return pd.DataFrame(), pd.Series()
 
             # Merge features
             features = tech_features.join(sentiment_features, how='inner')
+            if features.empty:
+                self.logger.error("No features after merging technical and sentiment data.")
+                return pd.DataFrame(), pd.Series()
 
             # Handle missing values
             features.ffill(inplace=True)
             features.bfill(inplace=True)
+            features.dropna(inplace=True)
+            if features.empty:
+                self.logger.error("Features DataFrame is empty after handling missing values.")
+                return pd.DataFrame(), pd.Series()
+
+            # Ensure price_data is aligned with features after processing
+            aligned_price_data = price_data.reindex(features.index, method='ffill')
+            if aligned_price_data.empty:
+                self.logger.error("Aligned price data is empty.")
+                return pd.DataFrame(), pd.Series()
 
             # Create target using FUTURE close price
-            features['future_close'] = features['close'].shift(-1)
+            features['future_close'] = aligned_price_data['close'].shift(-1)
             features['target'] = (features['future_close'] > features['close']).astype(int)
 
-            # Remove last row with NaN target and align price_data
-            features = features.iloc[:-1]
-            price_data = price_data.iloc[:-1]  # Critical alignment fix
+            # Remove rows with NaN target (last row)
+            features = features.dropna(subset=['target'])
+            if features.empty:
+                self.logger.error("No valid targets after processing.")
+                return pd.DataFrame(), pd.Series()
+
+            # Align price_data with features index
+            aligned_price_data = aligned_price_data.loc[features.index]
+
+            # Extract target
             target = features.pop('target')
 
-            self.logger.info("Feature processing completed successfully.")
             return features, target
 
         except Exception as e:
-            self.logger.error(f"Error during feature processing: {e}")
+            self.logger.error(f"Error during feature processing: {str(e)}", exc_info=True)
             return pd.DataFrame(), pd.Series()
 
     def _align_data(self, price_data: pd.DataFrame, orderbook_data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """
-        Aligns the price and orderbook data by index (timestamps).
-
-        Args:
-            price_data (pd.DataFrame): Price data to align.
-            orderbook_data (pd.DataFrame): Orderbook data to align.
-
-        Returns:
-            Tuple[pd.DataFrame, pd.DataFrame]: Aligned price and orderbook data.
-        """
-        # Resample both dataframes to a common frequency (e.g., 1 minute) if needed
-        price_data_resampled = price_data.resample('1T').last()  # Resample to 1-minute intervals
-        orderbook_data_resampled = orderbook_data.resample('1T').last()
+        # Resample using 'min' instead of deprecated 'T'
+        price_data_resampled = price_data.resample('1min').last()
+        orderbook_data_resampled = orderbook_data.resample('1min').last()
 
         # Align by index (timestamps)
-        aligned_price_data = price_data_resampled.reindex(orderbook_data_resampled.index)
-        aligned_orderbook_data = orderbook_data_resampled.reindex(price_data_resampled.index)
-
+        aligned_price_data = price_data_resampled.reindex(orderbook_data_resampled.index, method='ffill')
+        aligned_orderbook_data = orderbook_data_resampled.reindex(price_data_resampled.index, method='ffill')
         return aligned_price_data, aligned_orderbook_data

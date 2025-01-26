@@ -27,17 +27,24 @@ class XGBoostModel(BaseModel):
         self.model = xgb.XGBClassifier(**self.params)
         self.logger = logging.getLogger(__name__)
 
-    def train(self, X: pd.DataFrame, y: pd.Series):
-        """
-        Trains the XGBoost model.
-
-        Args:
-            X (pd.DataFrame): Feature DataFrame.
-            y (pd.Series): Target labels.
-        """
+    def train(self, X: pd.DataFrame, y: pd.Series, class_weights: dict = None):
         try:
+            if X.empty or len(X) == 0:
+                self.logger.error("Empty training data. Aborting XGBoost training.")
+                self.model = None
+                return
+
             self.logger.info("Training XGBoost model...")
-            self.model.fit(X, y)
+            if class_weights:
+                # Ensure all classes in y are present
+                present_classes = y.unique()
+                for cls in present_classes:
+                    if cls not in class_weights:
+                        class_weights[cls] = 1.0  # Default weight
+                sample_weights = y.map(class_weights)
+                self.model.fit(X, y, sample_weight=sample_weights)
+            else:
+                self.model.fit(X, y)
             self.logger.info("XGBoost model training completed.")
         except Exception as e:
             self.logger.error(f"Error training XGBoost: {e}")

@@ -22,13 +22,8 @@ class TradingVisualizer:
             'neutral': '#7f7f7f'
         }
 
-    def plot_model_performance(
-            self,
-            y_true: np.ndarray,
-            y_pred: np.ndarray,
-            prices: np.ndarray,
-            features: pd.DataFrame
-    ) -> Dict[str, go.Figure]:
+    def plot_model_performance(self, y_true: np.ndarray, y_pred: np.ndarray,
+                           prices: np.ndarray, features: pd.DataFrame) -> Dict[str, go.Figure]:
         """Create comprehensive performance visualization"""
         try:
             figures = {}
@@ -38,12 +33,13 @@ class TradingVisualizer:
             y_true = np.asarray(y_true)
             y_pred = np.asarray(y_pred)
 
-            # Calculate returns
+            # Use features index for alignment
+            valid_index = features.index[:-1]  # Account for returns being 1 shorter
             returns = np.diff(prices) / prices[:-1]
-            strategy_returns = returns * y_pred[:-1]  # Align lengths
+            strategy_returns = returns * y_pred[:-1]
 
             # 1. Equity Curve
-            figures['equity'] = self._plot_equity_curve(returns, strategy_returns, features.index)
+            figures['equity'] = self._plot_equity_curve(returns, strategy_returns, valid_index)
 
             # 2. Feature Importance
             figures['features'] = self._plot_feature_importance(features, returns)
